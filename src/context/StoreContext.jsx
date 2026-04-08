@@ -13,15 +13,21 @@ export const StoreProvider = ({ children }) => {
   const [enquiries, setEnquiries] = useState(() => load('aaj_enquiries', []));
   const [coupons, setCoupons] = useState(() => load('aaj_coupons', couponsSeed));
   const [banners, setBanners] = useState(() => load('aaj_banners', bannersSeed));
-  const [settings, setSettings] = useState(() => load('aaj_settings', {
-    storeName: 'Khushi Jewallary',
-    ownerName: 'Khushi',
-    phone: '+91 90000 00000',
-    whatsapp: '+91 90000 00000',
-  
-    address: 'Patna, Bihar',
-    instagram: '#', facebook: '#', youtube: '#',
-  }));
+  const [settings, setSettings] = useState(() => {
+    const defaults = {
+      storeName: 'Khushi Jewallary',
+      ownerName: 'Khushi',
+      phone: '+91 90000 00000',
+      whatsapp: '+91 90000 00000',
+      email: 'support@khushijewallary.com',
+      address: 'Your Shop Address Here, Jaipur, Rajasthan 302001',
+      instagram: '#', facebook: '#', youtube: '#',
+    };
+    const savedSettings = load('aaj_settings', defaults);
+    const storeName = (savedSettings?.storeName || '').toLowerCase().includes('aarohi') ? defaults.storeName : savedSettings.storeName;
+    const ownerName = (savedSettings?.ownerName || '').toLowerCase().includes('aarohi') ? defaults.ownerName : savedSettings.ownerName;
+    return { ...defaults, ...savedSettings, storeName, ownerName };
+  });
   const testimonials = testimonialsSeed;
   const reviews = [
     { id: 1, user: 'Sana', rating: 5, comment: 'Superb finish.' },
