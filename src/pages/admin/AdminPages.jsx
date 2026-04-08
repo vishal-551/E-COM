@@ -4,7 +4,7 @@ import { useStore } from '../../context/StoreContext';
 export const AdminLoginPage = () => {
   const [ok, setOk] = useState(localStorage.getItem('aaj_admin') === '1');
   if (ok) return <div className="py-8"><a href="/admin/dashboard" className="text-gold">Go to Dashboard</a></div>;
-  return <div className="py-8 max-w-md mx-auto premium-card p-4"><h1 className="section-title">Admin Login</h1><input id="u" placeholder="admin@aarohi.com" className="border p-2 rounded w-full my-2"/><input id="p" type="password" placeholder="••••••" className="border p-2 rounded w-full"/><button onClick={()=>{localStorage.setItem('aaj_admin','1');setOk(true);}} className="bg-charcoal text-white w-full mt-3 py-2 rounded">Login</button></div>;
+  return <div className="py-8 max-w-md mx-auto premium-card p-4"><h1 className="section-title">Admin Login</h1><input id="u" placeholder="admin@khushijewallary.com" className="border p-2 rounded w-full my-2"/><input id="p" type="password" placeholder="••••••" className="border p-2 rounded w-full"/><button onClick={()=>{localStorage.setItem('aaj_admin','1');setOk(true);}} className="bg-charcoal text-white w-full mt-3 py-2 rounded">Login</button></div>;
 };
 
 export const AdminDashboard = () => {
