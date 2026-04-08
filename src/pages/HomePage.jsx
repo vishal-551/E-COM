@@ -3,12 +3,15 @@ import ProductCard from '../components/ProductCard';
 import { useStore } from '../context/StoreContext';
 
 export default function HomePage() {
-  const { banners, categories, products, testimonials } = useStore();
+  const { banners, categories, products, testimonials, offers, settings } = useStore();
   const best = products.filter((p) => p.bestseller).slice(0, 8);
   const arrivals = products.filter((p) => p.newArrival).slice(0, 8);
+
   return (
     <div className="space-y-12 py-8">
+      <section className="premium-card p-6 text-center"><h1 className="text-3xl font-bold">{settings.homeHeadline}</h1></section>
       <section className="grid md:grid-cols-3 gap-4">{banners.map((b) => <div key={b.id} className="premium-card overflow-hidden relative"><img src={b.image} className="h-64 w-full object-cover" /><div className="absolute inset-0 bg-black/35 text-white p-5 flex flex-col justify-end"><h2 className="text-2xl font-semibold">{b.title}</h2><p>{b.subtitle}</p><Link to="/shop" className="mt-3 inline-block bg-gold px-4 py-2 rounded-lg">{b.cta}</Link></div></div>)}</section>
+      {!!offers.length && <section><h2 className="section-title mb-4">Latest Offers</h2><div className="grid md:grid-cols-3 gap-3">{offers.slice(0, 6).map((o) => <div key={o.id} className="premium-card p-4"><p className="font-semibold">{o.title}</p><p className="text-sm">{o.value}{o.type === 'percent' ? '%' : '₹'} off on {o.applyType}: {o.target}</p></div>)}</div></section>}
       <section><h2 className="section-title mb-4">Featured Categories</h2><div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">{categories.map((c) => <Link key={c.id} to={`/shop?category=${c.name}`} className="premium-card p-3 text-center"><img src={c.image} className="h-20 w-full object-cover rounded-lg mb-2" /><p className="text-sm font-medium">{c.name}</p></Link>)}</div></section>
       <section><h2 className="section-title mb-4">Best Selling Beauties</h2><div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">{best.map((p) => <ProductCard key={p.id} product={p} />)}</div></section>
       <section><h2 className="section-title mb-4">New Arrivals You’ll Love</h2><div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">{arrivals.map((p) => <ProductCard key={p.id} product={p} />)}</div></section>
