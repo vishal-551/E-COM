@@ -45,6 +45,7 @@ export default function App() {
       <Route path="/return-and-exchange-policy" element={<Layout><PolicyPage title="Return and Exchange Policy" /></Layout>} />
       <Route path="/cancellation-policy" element={<Layout><PolicyPage title="Cancellation Policy" /></Layout>} />
 
+      <Route path="/admin" element={<Navigate to={localStorage.getItem('aaj_admin') === '1' ? '/admin/dashboard' : '/admin/login'} replace />} />
       <Route path="/admin/login" element={<Layout><AdminLoginPage /></Layout>} />
       <Route path="/admin/dashboard" element={<Layout><AdminRoute><AdminDashboard /></AdminRoute></Layout>} />
       <Route path="/admin/products" element={<Layout><AdminRoute><AdminProducts /></AdminRoute></Layout>} />
