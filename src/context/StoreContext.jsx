@@ -19,8 +19,8 @@ export const StoreProvider = ({ children }) => {
       ownerName: 'Khushi',
       phone: '+91 90000 00000',
       whatsapp: '+91 90000 00000',
-      email: 'support@khushijewallary.com',
-      address: 'Your Shop Address Here, Jaipur, Rajasthan 302001',
+      email: 'support@khushijewels.com',
+      address: 'Your Shop Address Here, Patna, Bihar 800001',
       instagram: '#', facebook: '#', youtube: '#',
     };
     const savedSettings = load('aaj_settings', defaults);
