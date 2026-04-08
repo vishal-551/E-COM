@@ -1,0 +1,33 @@
+import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import ProductCard from '../components/ProductCard';
+import { useStore } from '../context/StoreContext';
+
+export default function ShopPage({ preset }) {
+  const { products, categories } = useStore();
+  const [params] = useSearchParams();
+  const [q, setQ] = useState('');
+  const [category, setCategory] = useState(params.get('category') || 'All');
+  const [sort, setSort] = useState('popularity');
+  const list = useMemo(() => {
+    let out = products.filter((p) => (category === 'All' || p.category === category) && (!preset || preset(p)) && `${p.name} ${p.category} ${p.tags.join(' ')}`.toLowerCase().includes(q.toLowerCase()));
+    if (sort === 'low') out.sort((a, b) => a.price - b.price);
+    if (sort === 'high') out.sort((a, b) => b.price - a.price);
+    if (sort === 'rated') out.sort((a, b) => b.rating - a.rating);
+    if (sort === 'discount') out.sort((a, b) => b.discount - a.discount);
+    return out;
+  }, [products, category, q, sort, preset]);
+
+  return (
+    <div className="py-8 space-y-5">
+      <h1 className="section-title">Shop All Products</h1>
+      <div className="premium-card p-4 grid md:grid-cols-4 gap-3">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, category, tags" className="border rounded-lg px-3 py-2" />
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className="border rounded-lg px-3 py-2"><option>All</option>{categories.map((c) => <option key={c.id}>{c.name}</option>)}</select>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} className="border rounded-lg px-3 py-2"><option value="popularity">Popularity</option><option value="low">Price low to high</option><option value="high">Price high to low</option><option value="rated">Highest rated</option><option value="discount">Discount high to low</option></select>
+        <div className="text-sm flex items-center">{list.length} products</div>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">{list.map((p) => <ProductCard key={p.id} product={p} />)}</div>
+    </div>
+  );
+}
