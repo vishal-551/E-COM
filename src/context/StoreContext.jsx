@@ -14,11 +14,11 @@ export const StoreProvider = ({ children }) => {
   const [coupons, setCoupons] = useState(() => load('aaj_coupons', couponsSeed));
   const [banners, setBanners] = useState(() => load('aaj_banners', bannersSeed));
   const [settings, setSettings] = useState(() => load('aaj_settings', {
-    storeName: 'Aarohi Artificial Jewellery',
-    ownerName: 'Aarohi Sharma',
+    storeName: 'Khushi Jewallary',
+    ownerName: 'Khushi',
     phone: '+91 90000 00000',
     whatsapp: '+91 90000 00000',
-    email: 'support@aarohijewels.com',
+  
     address: 'Patna, Bihar',
     instagram: '#', facebook: '#', youtube: '#',
   }));

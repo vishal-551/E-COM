@@ -1,4 +1,4 @@
-# Aarohi Artificial Jewellery - Premium E-commerce Demo
+# Khushi Jewallary - Premium E-commerce Demo
 
 A complete **static but functional** React + Vite + Tailwind artificial jewellery store demo with localStorage persistence and backend-ready architecture.
 
