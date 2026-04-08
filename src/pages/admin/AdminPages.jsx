@@ -4,6 +4,15 @@ import { useStore } from '../../context/StoreContext';
 const toast = (msg) => window.alert(msg);
 const slugify = (v) => v.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
 const card = 'rounded-2xl border border-cyan-400/20 bg-white/10 backdrop-blur-lg shadow-[0_0_40px_rgba(20,184,166,0.15)] p-4';
+const statusColors = {
+  'Order placed': 'bg-sky-300/20 text-sky-100',
+  Processing: 'bg-violet-300/20 text-violet-100',
+  Shipped: 'bg-amber-300/20 text-amber-100',
+  Delivered: 'bg-emerald-300/20 text-emerald-100',
+  Cancelled: 'bg-rose-300/20 text-rose-100',
+};
+
+const StatusPill = ({ status }) => <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[status] || 'bg-white/20 text-white'}`}>{status}</span>;
 
 export const AdminLoginPage = () => {
   const [email, setEmail] = useState('admin@khushijewallary.com');
@@ -30,11 +39,24 @@ export const AdminLoginPage = () => {
 
 export const AdminDashboard = () => {
   const { products, users, orders, enquiries, activities } = useStore();
+  const [range, setRange] = useState('7d');
   const revenue = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const recentOrders = useMemo(() => {
+    const days = { '7d': 7, '30d': 30, '90d': 90 }[range] || 7;
+    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+    return orders.filter((o) => new Date(o.date || 0).getTime() >= cutoff);
+  }, [orders, range]);
+  const conversion = users.length ? Math.round((recentOrders.length / users.length) * 100) : 0;
+  const orderStatus = useMemo(() => recentOrders.reduce((acc, order) => ({ ...acc, [order.status]: (acc[order.status] || 0) + 1 }), {}), [recentOrders]);
+  const categoryPerformance = useMemo(() => {
+    const mapped = products.reduce((acc, product) => ({ ...acc, [product.category]: (acc[product.category] || 0) + 1 }), {});
+    return Object.entries(mapped).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [products]);
+  const topStatusCount = Math.max(...Object.values(orderStatus), 1);
   const stats = [
-    ['Total users', users.length], ['Total orders', orders.length], ['Total revenue', `₹${revenue}`], ['Contact enquiries', enquiries.length],
+    ['Total users', users.length], ['Orders (range)', recentOrders.length], ['Total revenue', `₹${revenue}`], ['Contact enquiries', enquiries.length], ['Conversion rate', `${conversion}%`],
   ];
-  return <div className="py-8 space-y-4"><h1 className="section-title">Neon Admin Dashboard</h1><div className="grid md:grid-cols-4 gap-3">{stats.map(([k, v]) => <div key={k} className={card}><p className="text-sm text-cyan-100">{k}</p><p className="text-2xl font-semibold text-white">{v}</p></div>)}</div><div className={card}><h3 className="font-semibold mb-2 text-cyan-100">Recent activity</h3>{activities.length ? activities.slice(0, 6).map((a) => <p key={a.id} className="text-sm text-white/90">• {a.message}</p>) : <p className="text-sm text-white/90">No recent activity.</p>}</div></div>;
+  return <div className="py-8 space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><h1 className="section-title">Neon Admin Dashboard</h1><div className="flex items-center gap-2">{['7d', '30d', '90d'].map((option) => <button key={option} onClick={() => setRange(option)} className={`rounded-full px-3 py-1 text-sm ${range === option ? 'bg-cyan-500 text-white' : 'bg-white/10 text-cyan-100'}`}>{option.toUpperCase()}</button>)}</div></div><div className="grid md:grid-cols-5 gap-3">{stats.map(([k, v]) => <div key={k} className={card}><p className="text-sm text-cyan-100">{k}</p><p className="text-2xl font-semibold text-white">{v}</p></div>)}</div><div className="grid lg:grid-cols-2 gap-3"><div className={card}><h3 className="font-semibold mb-2 text-cyan-100">Order status overview</h3><div className="space-y-2">{Object.keys(orderStatus).length ? Object.entries(orderStatus).map(([status, count]) => <div key={status}><div className="mb-1 flex items-center justify-between text-sm"><StatusPill status={status} /><span className="text-white">{count}</span></div><div className="h-2 rounded-full bg-white/10"><div className="h-2 rounded-full bg-gradient-to-r from-cyan-400 to-violet-400" style={{ width: `${Math.round((count / topStatusCount) * 100)}%` }} /></div></div>) : <p className="text-sm text-white/90">No orders in selected range.</p>}</div></div><div className={card}><h3 className="font-semibold mb-2 text-cyan-100">Category performance (demo)</h3><div className="space-y-2">{categoryPerformance.map(([category, count]) => <div key={category} className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2 text-sm"><span className="text-white">{category}</span><span className="text-cyan-100">{count} products</span></div>)}{!categoryPerformance.length && <p className="text-sm text-white/90">Add products to see category metrics.</p>}</div></div></div><div className={card}><h3 className="font-semibold mb-2 text-cyan-100">Recent activity</h3>{activities.length ? activities.slice(0, 6).map((a) => <p key={a.id} className="text-sm text-white/90">• {a.message}</p>) : <p className="text-sm text-white/90">No recent activity.</p>}</div></div>;
 };
 
 export const AdminProducts = () => {
@@ -76,7 +98,19 @@ export const AdminCategories = () => {
   return <div className="py-8"><h1 className="section-title mb-3">Manage Categories</h1><div className={card}><input value={name} onChange={(e) => setName(e.target.value)} className="border p-2 rounded bg-black/20" placeholder="Category"/><button onClick={() => { setCategories([...categories, { id: Date.now(), name, slug: slugify(name) }]); addActivity(`Category added: ${name}`); setName(''); }} className="ml-2 bg-charcoal text-white px-3 py-2 rounded">Add</button><div className="mt-3 flex flex-wrap gap-2">{categories.map((c) => <span key={c.id} className="bg-blush/70 px-2 py-1 rounded text-sm">{c.name}</span>)}</div></div></div>;
 };
 
-export const AdminOrders = () => { const { orders } = useStore(); return <div className="py-8"><h1 className="section-title mb-3">Manage Orders</h1>{orders.map((o) => <div key={o.id} className={`${card} mb-2`}>{o.id} - ₹{o.total} - {o.status}</div>)}{!orders.length && <div className={card}>No orders yet.</div>}</div>; };
+export const AdminOrders = () => {
+  const { orders } = useStore();
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [query, setQuery] = useState('');
+  const visibleOrders = useMemo(() => orders.filter((order) => {
+    const statusMatch = statusFilter === 'All' || order.status === statusFilter;
+    const queryMatch = String(order.id).toLowerCase().includes(query.toLowerCase());
+    return statusMatch && queryMatch;
+  }), [orders, statusFilter, query]);
+  const statusOptions = ['All', ...new Set(orders.map((o) => o.status))];
+
+  return <div className="py-8 space-y-3"><h1 className="section-title mb-1">Manage Orders</h1><div className={`${card} grid md:grid-cols-3 gap-2`}><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by order ID" className="rounded border border-white/20 bg-black/20 p-2" /><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded border border-white/20 bg-black/20 p-2">{statusOptions.map((status) => <option key={status}>{status}</option>)}</select><p className="self-center text-sm text-cyan-100">Showing {visibleOrders.length} of {orders.length} orders</p></div>{visibleOrders.map((o) => <div key={o.id} className={`${card} mb-2 flex flex-wrap items-center justify-between gap-2`}><div><p className="font-medium text-white">{o.id}</p><p className="text-xs text-cyan-100">{new Date(o.date || Date.now()).toLocaleString()}</p></div><div className="text-white">₹{o.total}</div><StatusPill status={o.status} /></div>)}{!orders.length && <div className={card}>No orders yet.</div>}{!!orders.length && !visibleOrders.length && <div className={card}>No orders match selected filters.</div>}</div>;
+};
 
 export const AdminBanners = () => {
   const { banners, setBanners, settings, setSettings, addActivity } = useStore();
