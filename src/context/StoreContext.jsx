@@ -19,7 +19,7 @@ export const StoreProvider = ({ children }) => {
     phone: '+91 90000 00000',
     whatsapp: '+91 90000 00000',
     email: 'support@aarohijewels.com',
-    address: 'Your Shop Address Here, Jaipur, Rajasthan 302001',
+    address: 'Patna, Bihar',
     instagram: '#', facebook: '#', youtube: '#',
   }));
   const testimonials = testimonialsSeed;
