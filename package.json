@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "server": "node backend/server.js",
-    "dev:all": "concurrently \"npm run dev\" \"npm run server\""
+    "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
+    "backend:install": "npm install --prefix backend",
+    "backend:start": "npm --prefix backend start"
   },
   "dependencies": {
     "react": "^18.3.1",

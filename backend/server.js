@@ -26,7 +26,21 @@ import UploadAsset from './models/UploadAsset.js';
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: process.env.CLIENT_URL?.split(',') || '*' }));
+const allowedOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (!allowedOrigins.length || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json({ limit: '5mb' }));
 
 const uploadBufferToCloudinary = (file, folder = 'ecom') => new Promise((resolve, reject) => {
@@ -37,7 +51,7 @@ const uploadBufferToCloudinary = (file, folder = 'ecom') => new Promise((resolve
   Readable.from(file.buffer).pipe(stream);
 });
 
-app.get('/api/health', (_, res) => res.json({ ok: true, message: 'API running' }));
+app.get('/api/health', (_, res) => res.json({ ok: true, message: 'API running', env: process.env.NODE_ENV || 'development' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);

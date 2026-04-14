@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import api, { getApiErrorMessage } from '../../utils/api';
 import { clearAdminSession, setAdminSession } from '../../utils/adminAuth';
 
 const toast = (msg) => window.alert(msg);
@@ -24,23 +24,32 @@ export const AdminLoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const login = async () => {
+    if (!email || !password) {
+      setError('Email and password are required.');
+      return;
+    }
+
     try {
       setLoading(true);
+      setError('');
       const { data } = await api.post('/auth/login', { email, password });
       if (data.user?.role !== 'admin') throw new Error('Admin access required');
       setAdminSession(data.token);
       navigate('/admin', { replace: true });
     } catch (e) {
-      toast(e.response?.data?.message || e.message || 'Login failed');
+      const message = getApiErrorMessage(e, 'Login failed');
+      setError(message);
+      toast(message);
     } finally {
       setLoading(false);
     }
   };
 
-  return <div className="py-8 max-w-md mx-auto"><div className={card}><h1 className="section-title">Admin Login</h1><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="border p-2 rounded w-full my-2 bg-black/20"/><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Password" className="border p-2 rounded w-full bg-black/20"/><button disabled={loading} onClick={login} className="bg-charcoal text-white w-full mt-3 py-2 rounded">{loading ? 'Authenticating...' : 'Login'}</button></div></div>;
+  return <div className="py-8 max-w-md mx-auto"><div className={card}><h1 className="section-title">Admin Login</h1><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="border p-2 rounded w-full my-2 bg-black/20"/><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Password" className="border p-2 rounded w-full bg-black/20"/>{error && <p className="mt-2 text-sm text-rose-200">{error}</p>}<button disabled={loading} onClick={login} className="bg-charcoal text-white w-full mt-3 py-2 rounded disabled:opacity-70 disabled:cursor-not-allowed">{loading ? 'Authenticating...' : 'Login'}</button></div></div>;
 };
 
 export const AdminDashboard = () => {
