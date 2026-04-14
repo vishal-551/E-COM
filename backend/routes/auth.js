@@ -1,4 +1,5 @@
 import express from 'express';
+import { adminLogin, adminProfile } from '../controllers/authController.js';
 import {
   forgotPassword, login, profile, resetPassword, signup,
 } from '../controllers/authController.js';
@@ -7,6 +8,8 @@ import { validate } from '../middleware/validate.js';
 
 const router = express.Router();
 
+router.post('/admin/login', adminLogin);
+router.get('/admin/profile', protect, adminProfile);
 router.post('/signup', signup);
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
