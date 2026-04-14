@@ -1,45 +1,31 @@
-import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import { signToken } from '../utils/token.js';
 import { asyncHandler } from '../utils/error.js';
 
-const userResponse = (user) => ({
-  id: user._id,
-  name: user.name,
-  email: user.email,
-  role: user.role,
-  phone: user.phone,
+const adminDto = (admin) => ({
+  id: admin._id,
+  name: admin.name,
+  email: admin.email,
+  role: admin.role,
 });
 
-export const signup = asyncHandler(async (req, res) => {
-  const { name, email, password, phone } = req.body;
-  if (!name || !email || !password) {
-    res.status(400);
-    throw new Error('name, email, password are required');
-  }
-  const exists = await User.findOne({ email });
-  if (exists) {
-    res.status(400);
-    throw new Error('Email already registered');
-  }
-
-  const user = await User.create({ name, email, password, phone });
-  const token = signToken({ id: user._id, role: user.role });
-  res.status(201).json({ token, user: userResponse(user) });
-});
-
-export const login = asyncHandler(async (req, res) => {
+export const adminLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findOne({ email });
+  if (!email || !password) {
+    res.status(400);
+    throw new Error('Email and password are required');
+  }
 
-  if (!user || !(await user.comparePassword(password)) || user.isBlocked) {
+  const admin = await Admin.findOne({ email });
+  if (!admin || !admin.isActive || !(await admin.comparePassword(password))) {
     res.status(401);
     throw new Error('Invalid credentials');
   }
 
-  const token = signToken({ id: user._id, role: user.role });
-  res.json({ token, user: userResponse(user) });
+  const token = signToken({ id: admin._id, role: admin.role });
+  res.json({ token, admin: adminDto(admin) });
 });
 
-export const profile = asyncHandler(async (req, res) => {
-  res.json({ user: userResponse(req.user) });
+export const adminProfile = asyncHandler(async (req, res) => {
+  res.json({ admin: adminDto(req.user) });
 });

@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import { asyncHandler } from '../utils/error.js';
 
 export const protect = asyncHandler(async (req, res, next) => {
@@ -13,19 +13,19 @@ export const protect = asyncHandler(async (req, res, next) => {
   }
 
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findById(decoded.id).select('-password');
+  const admin = await Admin.findById(decoded.id).select('-password');
 
-  if (!user || user.isBlocked) {
+  if (!admin || !admin.isActive) {
     res.status(401);
-    throw new Error('Unauthorized user');
+    throw new Error('Unauthorized admin');
   }
 
-  req.user = user;
+  req.user = admin;
   next();
 });
 
 export const adminOnly = (req, res, next) => {
-  if (req.user?.role !== 'admin') {
+  if (!['admin', 'editor'].includes(req.user?.role)) {
     res.status(403);
     throw new Error('Admin access required');
   }
