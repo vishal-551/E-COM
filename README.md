@@ -1,169 +1,80 @@
-# SaaSCore - Production-Ready Admin Dashboard SaaS
+# Production-Ready E-Commerce (React + Node + MongoDB)
 
-A full-stack SaaS/admin dashboard built with:
-- Frontend: **React + Vite + Tailwind + Axios**
-- Backend: **Node.js + Express + MongoDB + Mongoose**
-- Auth: **JWT + bcrypt**
-- Authorization: **Role + permission based**
+Full-stack deployable e-commerce application with real backend APIs, JWT auth, MongoDB persistence, Cloudinary uploads, and admin panel.
 
----
+## Tech Stack
+- Frontend: React + Vite + Tailwind + Axios
+- Backend: Node.js + Express + Mongoose
+- Database: MongoDB Atlas / local MongoDB
+- Auth: JWT + bcrypt
+- Uploads: Multer + Cloudinary
 
-## Full Project Structure
+## Folder Structure
+- `src/` Frontend app (customer + admin UI)
+- `backend/config` DB + cloudinary config
+- `backend/models` Mongoose models
+- `backend/routes` API routes
+- `backend/controllers` auth controller
+- `backend/middleware` auth + upload middleware
+- `backend/utils` error + token utils
+- `backend/scripts/seedAdmin.js` seed first admin
 
-```txt
-.
-├── backend
-│   ├── config/db.js
-│   ├── controllers/
-│   ├── middleware/
-│   ├── models/
-│   ├── routes/
-│   ├── seed/admin.js
-│   ├── utils/
-│   ├── package.json
-│   └── server.js
-├── src
-│   ├── api/client.js
-│   ├── components/common/
-│   ├── components/layout/
-│   ├── context/AuthContext.jsx
-│   ├── pages/
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── index.css
-├── .env.example
-├── package.json
-└── vercel.json
-```
-
----
-
-## Features Completed
-
-### Public SaaS Pages
-- Landing page
-- Pricing page
-- Login / Signup
-- Forgot password
-
-### Core App Modules
-- Dashboard overview cards
-- Analytics charts (revenue/users/orders/leads)
-- User management (list/search/filter/delete/block)
-- Team management (invite/create role-based accounts)
-- Settings modules (app/profile/company/branding/notifications/security categories)
-- Notifications center
-- Activity logs module
-- Profile page
-- Contact/support ticket form
-
-### Security + Auth
-- JWT authentication
-- Password hashing with bcrypt
-- Protected backend routes
-- Frontend protected routes
-- Role + permission enforcement in frontend and backend
-- CORS and centralized API protections
-- Centralized error handling
-
-### SaaS/Subscription-Ready Structure
-- `User.subscription` fields for plan, status, expiry
-- Role and permission model support
-
----
-
-## Environment Variables
-
-Copy env file:
-
+## Setup
 ```bash
+npm install
+npm run backend:install
 cp .env.example .env
 ```
 
-Set:
-- `VITE_API_BASE_URL`
-- `MONGO_URI`
-- `JWT_SECRET`
-- `CLIENT_URL`
+Fill all values in `.env`.
 
----
-
-## Local Run Commands
-
-Install dependencies:
-
-```bash
-npm install
-npm install --prefix backend
-```
-
-Run frontend + backend:
-
+## Run (local)
 ```bash
 npm run dev:all
 ```
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:5000`
 
-Frontend only:
-
+## Seed First Admin
 ```bash
-npm run dev
+npm --prefix backend run seed:admin
 ```
 
-Backend only:
-
-```bash
-npm run backend:dev
-```
-
----
-
-## Admin Seed Method
-
-```bash
-npm run backend:seed:admin
-```
-
-Uses:
-- `SEED_ADMIN_EMAIL`
-- `SEED_ADMIN_PASSWORD`
-
----
-
-## Deployment Steps
-
+## Deploy
 ### Frontend (Vercel)
-1. Import repository into Vercel.
-2. Build command: `npm run build`
-3. Output directory: `dist`
-4. Set env variable: `VITE_API_BASE_URL=https://your-api-domain.com/api`
+- Set build command: `npm run build`
+- Output: `dist`
+- Env: `VITE_API_BASE_URL=https://<your-backend-domain>/api`
 
-### Backend (Render / Railway / VPS)
-1. Deploy `backend/` as Node service.
-2. Build/install: `npm install`
-3. Start command: `npm run start`
-4. Add env vars from `.env.example`.
-5. Point `MONGO_URI` to MongoDB Atlas cluster.
-6. Set `CLIENT_URL` to your frontend domain.
+### Backend (Render/Railway/VPS)
+- Start command: `npm --prefix backend start`
+- Env: `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL`, Cloudinary vars
 
-### Domain-ready architecture
-- Frontend domain: `https://app.yourdomain.com`
-- Backend API domain: `https://api.yourdomain.com`
-- Configure CORS with `CLIENT_URL`.
+### Database
+- Use MongoDB Atlas connection in `MONGO_URI`.
 
----
+### Images
+- Cloudinary stores product thumb/gallery and banners.
 
-## API Overview
+## Features Implemented
+### Customer
+- Homepage, category, shop, product details
+- Search/sort in listing
+- Cart + wishlist persisted in MongoDB
+- JWT signup/login/profile
+- Forgot/reset password token flow
+- Checkout with shipping/payment/coupon
+- Order history + tracking fields
+- Contact and about pages
 
-- `POST /api/auth/signup`
-- `POST /api/auth/login`
-- `POST /api/auth/forgot-password`
-- `POST /api/auth/reset-password`
-- `GET /api/auth/me`
-- `GET/POST/PATCH/DELETE /api/users`
-- `GET /api/dashboard/overview`
-- `GET /api/dashboard/analytics`
-- `GET/POST /api/settings`
-- `GET/PATCH /api/notifications`
-- `GET /api/activity-logs`
-- `POST/GET/PATCH /api/support`
+### Admin
+- Admin login/guard
+- Dashboard analytics
+- Product/category/banner/coupon CRUD
+- Order management + status updates
+- User and enquiry management
+- Settings management
+- Cloudinary image uploads
 
+## API Health
+- `GET /api/health`

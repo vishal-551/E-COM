@@ -1,9 +1,8 @@
 import crypto from 'crypto';
 import User from '../models/User.js';
-import Notification from '../models/Notification.js';
-import { signToken } from '../utils/jwt.js';
-import { asyncHandler, AppError } from '../utils/error.js';
-import { logActivity } from '../utils/activity.js';
+import PasswordResetToken from '../models/PasswordResetToken.js';
+import { signToken } from '../utils/token.js';
+import { asyncHandler } from '../utils/error.js';
 
 const userResponse = (user) => ({
   id: user._id,
@@ -73,59 +72,47 @@ export const login = asyncHandler(async (req, res) => {
 
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  const user = await User.findOne({ email }).select('+resetPasswordToken +resetPasswordExpires');
-
-  if (!user) {
-    return res.json({ message: 'If account exists, reset instructions are generated.' });
+  if (!email) {
+    res.status(400);
+    throw new Error('Email is required');
   }
+  const user = await User.findOne({ email });
+  if (!user) return res.json({ message: 'If the email exists, reset instructions were generated.' });
 
+  await PasswordResetToken.deleteMany({ user: user._id });
   const rawToken = crypto.randomBytes(32).toString('hex');
-  const hashed = crypto.createHash('sha256').update(rawToken).digest('hex');
-
-  user.resetPasswordToken = hashed;
-  user.resetPasswordExpires = new Date(Date.now() + 1000 * 60 * 30);
-  await user.save();
-
-  await Notification.create({
-    user: user._id,
-    title: 'Password reset requested',
-    message: 'A reset request was submitted for your account.',
-    type: 'warning'
-  });
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
+  await PasswordResetToken.create({ user: user._id, tokenHash, expiresAt });
 
   res.json({
-    message: 'Password reset token generated (integrate email provider to send this).',
-    resetToken: process.env.NODE_ENV === 'development' ? rawToken : undefined
+    message: 'Password reset token generated. Integrate with your mail provider in production.',
+    resetToken: rawToken,
+    expiresAt,
   });
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {
   const { token, password } = req.body;
-  const hashed = crypto.createHash('sha256').update(token).digest('hex');
+  if (!token || !password) {
+    res.status(400);
+    throw new Error('token and password are required');
+  }
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const record = await PasswordResetToken.findOne({ tokenHash, expiresAt: { $gt: new Date() } });
+  if (!record) {
+    res.status(400);
+    throw new Error('Invalid or expired reset token');
+  }
 
-  const user = await User.findOne({
-    resetPasswordToken: hashed,
-    resetPasswordExpires: { $gt: new Date() }
-  }).select('+resetPasswordToken +resetPasswordExpires');
-
-  if (!user) throw new AppError('Token invalid or expired.', 400);
-
+  const user = await User.findById(record.user);
   user.password = password;
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpires = undefined;
   await user.save();
+  await PasswordResetToken.deleteMany({ user: user._id });
 
-  await logActivity({
-    actor: user._id,
-    action: 'password_reset',
-    entityType: 'Auth',
-    entityId: String(user._id),
-    ip: req.ip
-  });
-
-  res.json({ message: 'Password reset successful.' });
+  res.json({ message: 'Password reset successful' });
 });
 
-export const me = asyncHandler(async (req, res) => {
+export const profile = asyncHandler(async (req, res) => {
   res.json({ user: userResponse(req.user) });
 });
