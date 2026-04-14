@@ -2,8 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-html { scroll-behavior: smooth; }
-body { @apply bg-ivory text-charcoal antialiased; }
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
 
-.section-title { @apply text-2xl md:text-3xl font-semibold tracking-wide; }
-.premium-card { @apply bg-white rounded-2xl shadow-luxury border border-champagne/60; }
+input, textarea, select {
+  @apply outline-none ring-indigo-500 focus:ring-2;
+}

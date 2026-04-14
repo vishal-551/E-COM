@@ -1,168 +1,89 @@
-import { supabase } from './supabase';
+import api from '../utils/api';
+
+import { clearAdminSession, getAdminToken, setAdminSession } from '../utils/adminAuth';
+
+export const setAuthToken = (token) => {
+  if (token) setAdminSession(token);
+  else clearAdminSession();
+};
+export const getAuthToken = () => getAdminToken();
+
+api.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
 export const authService = {
-  signUp: async ({ email, password, fullName }) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName } },
-    });
-    if (error) throw error;
+  async signUp(payload) {
+    const { data } = await api.post('/auth/signup', payload);
+    setAuthToken(data.token);
     return data;
   },
-  signIn: async ({ email, password }) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+  async signIn(payload) {
+    const { data } = await api.post('/auth/login', payload);
+    setAuthToken(data.token);
     return data;
   },
-  signOut: async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+  async profile() {
+    const { data } = await api.get('/auth/profile');
+    return data.user;
   },
-  resetPassword: async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
-    });
-    if (error) throw error;
+  async forgotPassword(email) {
+    const { data } = await api.post('/auth/forgot-password', { email });
+    return data;
   },
+  async resetPassword(token, password) {
+    const { data } = await api.post('/auth/reset-password', { token, password });
+    return data;
+  },
+  signOut() { setAuthToken(null); },
 };
 
-const qb = (table) => supabase.from(table);
-
 export const storeService = {
-  listPublicProducts: async () => {
-    const { data, error } = await qb('products').select('*, category:categories(*)').eq('is_active', true).order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
-  },
-  listProductImages: async () => {
-    const { data, error } = await qb('product_images').select('*');
-    if (error) throw error;
-    return data;
-  },
-  listCategories: async () => {
-    const { data, error } = await qb('categories').select('*').eq('is_active', true).order('name');
-    if (error) throw error;
-    return data;
-  },
-  listBanners: async () => {
-    const { data, error } = await qb('banners').select('*').eq('is_active', true).order('display_order');
-    if (error) throw error;
-    return data;
-  },
-  getSiteSettings: async () => {
-    const { data, error } = await qb('site_settings').select('*').eq('key', 'global').maybeSingle();
-    if (error) throw error;
-    return data?.value ?? {};
-  },
-  submitEnquiry: async (payload) => {
-    const { error } = await qb('enquiries').insert(payload);
-    if (error) throw error;
-  },
-  getCart: async (userId) => {
-    const { data, error } = await qb('cart_items').select('*, product:products(*)').eq('user_id', userId);
-    if (error) throw error;
-    return data;
-  },
-  upsertCartItem: async ({ user_id, product_id, quantity }) => {
-    const { error } = await qb('cart_items').upsert({ user_id, product_id, quantity }, { onConflict: 'user_id,product_id' });
-    if (error) throw error;
-  },
-  removeCartItem: async ({ user_id, product_id }) => {
-    const { error } = await qb('cart_items').delete().eq('user_id', user_id).eq('product_id', product_id);
-    if (error) throw error;
-  },
-  getWishlist: async (userId) => {
-    const { data, error } = await qb('wishlists').select('*, product:products(*)').eq('user_id', userId);
-    if (error) throw error;
-    return data;
-  },
-  toggleWishlist: async ({ user_id, product_id, wished }) => {
-    if (wished) {
-      const { error } = await qb('wishlists').delete().eq('user_id', user_id).eq('product_id', product_id);
-      if (error) throw error;
-      return;
-    }
-    const { error } = await qb('wishlists').insert({ user_id, product_id });
-    if (error) throw error;
-  },
-  applyCoupon: async ({ code, subtotal }) => {
-    const { data, error } = await qb('coupons').select('*').eq('code', code.toUpperCase()).eq('is_active', true).maybeSingle();
-    if (error) throw error;
-    if (!data) throw new Error('Invalid coupon');
-    if (data.expiry_date && new Date(data.expiry_date).getTime() < Date.now()) throw new Error('Coupon expired');
-    if (subtotal < Number(data.min_order_amount || 0)) throw new Error('Minimum amount not met');
-    const discount = data.discount_type === 'percentage' ? (subtotal * Number(data.discount_value)) / 100 : Number(data.discount_value);
-    return { coupon: data, discount: Math.min(discount, subtotal) };
-  },
-  placeOrder: async ({ user_id, shipping_address, payment_method, items, coupon_code, discount_amount, subtotal, shipping_amount, total_amount }) => {
-    const { data: order, error } = await qb('orders').insert({
-      user_id,
-      shipping_address,
-      payment_method,
-      coupon_code,
-      discount_amount,
-      subtotal,
-      shipping_amount,
-      total_amount,
-    }).select('*').single();
-    if (error) throw error;
-
-    const orderItems = items.map((it) => ({
-      order_id: order.id,
-      product_id: it.product_id,
-      quantity: it.quantity,
-      unit_price: it.unit_price,
-      line_total: it.quantity * it.unit_price,
-      product_name: it.product_name,
-      product_thumbnail_url: it.product_thumbnail_url,
-    }));
-
-    const { error: itemErr } = await qb('order_items').insert(orderItems);
-    if (itemErr) throw itemErr;
-
-    const { error: cartErr } = await qb('cart_items').delete().eq('user_id', user_id);
-    if (cartErr) throw cartErr;
-
-    return order;
-  },
-  myOrders: async (userId) => {
-    const { data, error } = await qb('orders').select('*, order_items(*)').eq('user_id', userId).order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
-  },
+  listPublicProducts: async (params = {}) => (await api.get('/products', { params })).data.items,
+  getProductById: async (id) => (await api.get(`/products/${id}`)).data,
+  listCategories: async () => (await api.get('/categories')).data,
+  listBanners: async () => (await api.get('/banners')).data.filter((b) => b.active),
+  getSiteSettings: async () => (await api.get('/settings')).data,
+  submitEnquiry: async (payload) => (await api.post('/contact', payload)).data,
+  getCart: async () => (await api.get('/cart')).data,
+  upsertCartItem: async (payload) => (await api.post('/cart', payload)).data,
+  removeCartItem: async (productId) => (await api.delete(`/cart/${productId}`)).data,
+  getWishlist: async () => (await api.get('/wishlist')).data,
+  toggleWishlist: async (product) => (await api.post('/wishlist', { product: product._id })).data,
+  applyCoupon: async ({ code, subtotal }) => (await api.post('/coupons/apply', { code, subtotal })).data,
+  placeOrder: async (payload) => (await api.post('/orders', payload)).data,
+  myOrders: async () => (await api.get('/orders/mine')).data,
 };
 
 export const adminService = {
-  getDashboard: async () => {
-    const [
-      sales, orders, products, users, pending, dispatched, delivered, cancelled, lowStock, recentOrders, recentUsers,
-    ] = await Promise.all([
-      qb('orders').select('total_amount'),
-      qb('orders').select('id', { count: 'exact', head: true }),
-      qb('products').select('id', { count: 'exact', head: true }),
-      qb('profiles').select('id', { count: 'exact', head: true }).eq('role', 'customer'),
-      qb('orders').select('id', { count: 'exact', head: true }).eq('status', 'Pending'),
-      qb('orders').select('id', { count: 'exact', head: true }).eq('status', 'Dispatched'),
-      qb('orders').select('id', { count: 'exact', head: true }).eq('status', 'Delivered'),
-      qb('orders').select('id', { count: 'exact', head: true }).eq('status', 'Cancelled'),
-      qb('products').select('id', { count: 'exact', head: true }).lte('stock', 5),
-      qb('orders').select('*, profile:profiles(full_name,email)').order('created_at', { ascending: false }).limit(5),
-      qb('profiles').select('*').order('created_at', { ascending: false }).limit(5),
-    ]);
-    const totalSales = (sales.data ?? []).reduce((sum, o) => sum + Number(o.total_amount), 0);
-    return {
-      totalSales,
-      totalOrders: orders.count ?? 0,
-      totalProducts: products.count ?? 0,
-      totalUsers: users.count ?? 0,
-      pendingOrders: pending.count ?? 0,
-      dispatchedOrders: dispatched.count ?? 0,
-      deliveredOrders: delivered.count ?? 0,
-      cancelledOrders: cancelled.count ?? 0,
-      lowStockCount: lowStock.count ?? 0,
-      latestOrders: recentOrders.data ?? [],
-      latestCustomers: recentUsers.data ?? [],
-    };
+  getDashboard: async () => (await api.get('/admin/analytics')).data,
+  listProducts: async () => (await api.get('/products', { params: { limit: 100 } })).data.items,
+  createProduct: async (payload) => (await api.post('/products', payload)).data,
+  updateProduct: async (id, payload) => (await api.put(`/products/${id}`, payload)).data,
+  deleteProduct: async (id) => (await api.delete(`/products/${id}`)).data,
+  listOrders: async () => (await api.get('/orders')).data,
+  updateOrderStatus: async (id, payload) => (await api.patch(`/orders/${id}/status`, payload)).data,
+  listUsers: async () => (await api.get('/users')).data,
+  listBanners: async () => (await api.get('/banners')).data,
+  createBanner: async (payload) => (await api.post('/banners', payload)).data,
+  deleteBanner: async (id) => (await api.delete(`/banners/${id}`)).data,
+  listEnquiries: async () => (await api.get('/contact')).data,
+  markEnquiry: async (id, isRead) => (await api.patch(`/contact/${id}/read`, { isRead })).data,
+  deleteEnquiry: async (id) => (await api.delete(`/contact/${id}`)).data,
+  listCoupons: async () => (await api.get('/coupons')).data,
+  createCoupon: async (payload) => (await api.post('/coupons', payload)).data,
+  updateCoupon: async (id, payload) => (await api.put(`/coupons/${id}`, payload)).data,
+  deleteCoupon: async (id) => (await api.delete(`/coupons/${id}`)).data,
+  getSettings: async () => (await api.get('/settings')).data,
+  saveSettings: async (payload) => (await api.put('/settings', payload)).data,
+  listCategories: async () => (await api.get('/categories')).data,
+  createCategory: async (payload) => (await api.post('/categories', payload)).data,
+  deleteCategory: async (id) => (await api.delete(`/categories/${id}`)).data,
+  uploadSingle: async (file) => {
+    const fd = new FormData();
+    fd.append('image', file);
+    return (await api.post('/upload/single', fd, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
   },
 };

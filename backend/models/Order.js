@@ -18,6 +18,9 @@ const historySchema = new mongoose.Schema({
 const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   items: [itemSchema],
+  subtotal: { type: Number, required: true, default: 0 },
+  discountAmount: { type: Number, default: 0 },
+  shippingAmount: { type: Number, default: 0 },
   total: { type: Number, required: true },
   paymentMethod: { type: String, default: 'COD' },
   paymentStatus: { type: String, enum: ['unpaid', 'paid', 'refunded'], default: 'unpaid' },
