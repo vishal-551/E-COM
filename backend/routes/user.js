@@ -1,12 +1,27 @@
 import express from 'express';
 import User from '../models/User.js';
+import Order from '../models/Order.js';
 import { adminOnly, protect } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/error.js';
 
 const router = express.Router();
 
-router.get('/', protect, adminOnly, asyncHandler(async (_, res) => {
-  res.json(await User.find().select('-password').sort({ createdAt: -1 }));
+router.get('/', protect, adminOnly, asyncHandler(async (req, res) => {
+  const { q = '' } = req.query;
+  const filter = q ? {
+    $or: [
+      { name: { $regex: q, $options: 'i' } },
+      { email: { $regex: q, $options: 'i' } },
+    ],
+  } : {};
+  const users = await User.find(filter).select('-password').sort({ createdAt: -1 });
+
+  const orderCounts = await Order.aggregate([
+    { $group: { _id: '$user', count: { $sum: 1 } } },
+  ]);
+  const countMap = Object.fromEntries(orderCounts.map((i) => [String(i._id), i.count]));
+
+  res.json(users.map((u) => ({ ...u.toObject(), orderCount: countMap[String(u._id)] || 0 })));
 }));
 
 router.patch('/:id/block', protect, adminOnly, asyncHandler(async (req, res) => {

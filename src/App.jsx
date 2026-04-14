@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
@@ -7,12 +8,24 @@ import {
   AboutPage, AccountPage, CartPage, CheckoutPage, ContactPage, FAQPage, LoginPage, MyOrdersPage, NotFoundPage, PolicyPage, SignupPage, TrackingPage, WishlistPage,
 } from './pages/UtilityPages';
 import {
-  AdminBanners, AdminCategories, AdminCoupons, AdminCustomers, AdminDashboard, AdminLoginPage, AdminOrders, AdminProducts, AdminReviews, AdminSettings,
+  AdminBanners, AdminCategories, AdminCoupons, AdminDashboard, AdminEnquiries, AdminLoginPage, AdminOrders, AdminProducts, AdminReviews, AdminSettings, AdminUsers,
 } from './pages/admin/AdminPages';
+import api from './utils/api';
+import { getAdminToken } from './utils/adminAuth';
 
 const Collection = ({ title, filter }) => <Layout><div className="py-8"><h1 className="section-title mb-4">{title}</h1><ShopPage preset={filter} /></div></Layout>;
 
-const AdminRoute = ({ children }) => localStorage.getItem('aaj_admin') === '1' ? children : <Navigate to="/admin/login" />;
+const AdminRoute = ({ children }) => {
+  const [ok, setOk] = useState(null);
+  useEffect(() => {
+    const token = getAdminToken();
+    if (!token) return setOk(false);
+    api.get('/auth/profile').then((r) => setOk(r.data.user?.role === 'admin')).catch(() => setOk(false));
+  }, []);
+
+  if (ok === null) return <Layout><div className="py-8">Authorizing...</div></Layout>;
+  return ok ? children : <Navigate to="/admin/login" replace />;
+};
 
 export default function App() {
   return (
@@ -45,17 +58,18 @@ export default function App() {
       <Route path="/return-and-exchange-policy" element={<Layout><PolicyPage title="Return and Exchange Policy" /></Layout>} />
       <Route path="/cancellation-policy" element={<Layout><PolicyPage title="Cancellation Policy" /></Layout>} />
 
-      <Route path="/admin" element={<Navigate to={localStorage.getItem('aaj_admin') === '1' ? '/admin/dashboard' : '/admin/login'} replace />} />
       <Route path="/admin/login" element={<Layout><AdminLoginPage /></Layout>} />
-      <Route path="/admin/dashboard" element={<Layout><AdminRoute><AdminDashboard /></AdminRoute></Layout>} />
-      <Route path="/admin/products" element={<Layout><AdminRoute><AdminProducts /></AdminRoute></Layout>} />
-      <Route path="/admin/categories" element={<Layout><AdminRoute><AdminCategories /></AdminRoute></Layout>} />
-      <Route path="/admin/orders" element={<Layout><AdminRoute><AdminOrders /></AdminRoute></Layout>} />
-      <Route path="/admin/banners" element={<Layout><AdminRoute><AdminBanners /></AdminRoute></Layout>} />
-      <Route path="/admin/customers" element={<Layout><AdminRoute><AdminCustomers /></AdminRoute></Layout>} />
-      <Route path="/admin/coupons" element={<Layout><AdminRoute><AdminCoupons /></AdminRoute></Layout>} />
-      <Route path="/admin/reviews" element={<Layout><AdminRoute><AdminReviews /></AdminRoute></Layout>} />
-      <Route path="/admin/settings" element={<Layout><AdminRoute><AdminSettings /></AdminRoute></Layout>} />
+      <Route path="/admin" element={<AdminRoute><Layout><AdminDashboard /></Layout></AdminRoute>} />
+      <Route path="/admin/products" element={<AdminRoute><Layout><AdminProducts /></Layout></AdminRoute>} />
+      <Route path="/admin/orders" element={<AdminRoute><Layout><AdminOrders /></Layout></AdminRoute>} />
+      <Route path="/admin/users" element={<AdminRoute><Layout><AdminUsers /></Layout></AdminRoute>} />
+      <Route path="/admin/banners" element={<AdminRoute><Layout><AdminBanners /></Layout></AdminRoute>} />
+      <Route path="/admin/enquiries" element={<AdminRoute><Layout><AdminEnquiries /></Layout></AdminRoute>} />
+      <Route path="/admin/coupons" element={<AdminRoute><Layout><AdminCoupons /></Layout></AdminRoute>} />
+      <Route path="/admin/settings" element={<AdminRoute><Layout><AdminSettings /></Layout></AdminRoute>} />
+      <Route path="/admin/categories" element={<AdminRoute><Layout><AdminCategories /></Layout></AdminRoute>} />
+      <Route path="/admin/reviews" element={<AdminRoute><Layout><AdminReviews /></Layout></AdminRoute>} />
+
       <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
     </Routes>
   );

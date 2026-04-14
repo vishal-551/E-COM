@@ -14,13 +14,47 @@ router.get('/mine', protect, asyncHandler(async (req, res) => {
   res.json(await Order.find({ user: req.user._id }).sort({ createdAt: -1 }));
 }));
 
-router.get('/', protect, adminOnly, asyncHandler(async (_, res) => {
-  res.json(await Order.find().populate('user', 'name email').sort({ createdAt: -1 }));
+router.get('/', protect, adminOnly, asyncHandler(async (req, res) => {
+  const {
+    status, paymentStatus, q,
+  } = req.query;
+  const filter = {};
+
+  if (status) filter.status = status;
+  if (paymentStatus) filter.paymentStatus = paymentStatus;
+  if (q) filter._id = { $regex: q, $options: 'i' };
+
+  const orders = await Order.find(filter)
+    .populate('user', 'name email phone createdAt')
+    .sort({ createdAt: -1 });
+  res.json(orders);
 }));
 
 router.patch('/:id/status', protect, adminOnly, asyncHandler(async (req, res) => {
-  const data = await Order.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
-  res.json(data);
+  const {
+    status, note = '', paymentStatus, courierPartner, trackingId, dispatchDate, estimatedDeliveryDate,
+  } = req.body;
+
+  const order = await Order.findById(req.params.id);
+  if (!order) return res.status(404).json({ message: 'Order not found' });
+
+  if (status) {
+    order.status = status;
+    order.statusHistory.push({ status, note, updatedBy: req.user._id, at: new Date() });
+  }
+  if (paymentStatus) order.paymentStatus = paymentStatus;
+
+  if (status === 'Dispatched' || courierPartner || trackingId || dispatchDate || estimatedDeliveryDate) {
+    order.dispatch = {
+      courierPartner: courierPartner ?? order.dispatch?.courierPartner ?? '',
+      trackingId: trackingId ?? order.dispatch?.trackingId ?? '',
+      dispatchDate: dispatchDate ? new Date(dispatchDate) : order.dispatch?.dispatchDate,
+      estimatedDeliveryDate: estimatedDeliveryDate ? new Date(estimatedDeliveryDate) : order.dispatch?.estimatedDeliveryDate,
+    };
+  }
+
+  await order.save();
+  res.json(order);
 }));
 
 export default router;
