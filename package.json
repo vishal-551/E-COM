@@ -1,5 +1,5 @@
 {
-  "name": "aarohi-artificial-jewellery",
+  "name": "saascore-dashboard",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -8,32 +8,23 @@
     "build": "vite build",
     "preview": "vite preview",
     "server": "node backend/server.js",
-    "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
-    "backend:install": "npm install --prefix backend",
-    "backend:start": "npm --prefix backend start"
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:start": "npm --prefix backend run start",
+    "backend:seed:admin": "npm --prefix backend run seed:admin",
+    "dev:all": "concurrently \"npm run dev\" \"npm run backend:dev\""
   },
   "dependencies": {
+    "axios": "^1.8.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.30.1",
-    "lucide-react": "^0.468.0",
-    "axios": "^1.8.2",
-    "bcryptjs": "^3.0.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.9.5",
-    "cloudinary": "^2.5.1",
-    "multer": "^1.4.5-lts.1",
-    "@supabase/supabase-js": "^2.49.8"
+    "react-router-dom": "^6.30.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "vite": "^5.4.10",
-    "concurrently": "^9.1.2"
+    "vite": "^5.4.10"
   }
 }

@@ -1,0 +1,39 @@
+export const ROLES = {
+  SUPER_ADMIN: 'super_admin',
+  ADMIN: 'admin',
+  MANAGER: 'manager',
+  STAFF: 'staff',
+  USER: 'user'
+};
+
+export const PERMISSIONS = {
+  VIEW_DASHBOARD: 'view_dashboard',
+  VIEW_ANALYTICS: 'view_analytics',
+  MANAGE_USERS: 'manage_users',
+  MANAGE_TEAM: 'manage_team',
+  MANAGE_SETTINGS: 'manage_settings',
+  VIEW_ACTIVITY_LOGS: 'view_activity_logs',
+  VIEW_NOTIFICATIONS: 'view_notifications',
+  MANAGE_NOTIFICATIONS: 'manage_notifications',
+  MANAGE_SUPPORT: 'manage_support',
+  MANAGE_SUBSCRIPTION: 'manage_subscription'
+};
+
+export const ROLE_PERMISSIONS = {
+  [ROLES.SUPER_ADMIN]: Object.values(PERMISSIONS),
+  [ROLES.ADMIN]: Object.values(PERMISSIONS),
+  [ROLES.MANAGER]: [
+    PERMISSIONS.VIEW_DASHBOARD,
+    PERMISSIONS.VIEW_ANALYTICS,
+    PERMISSIONS.MANAGE_TEAM,
+    PERMISSIONS.VIEW_ACTIVITY_LOGS,
+    PERMISSIONS.VIEW_NOTIFICATIONS,
+    PERMISSIONS.MANAGE_SUPPORT
+  ],
+  [ROLES.STAFF]: [
+    PERMISSIONS.VIEW_DASHBOARD,
+    PERMISSIONS.VIEW_NOTIFICATIONS,
+    PERMISSIONS.MANAGE_SUPPORT
+  ],
+  [ROLES.USER]: [PERMISSIONS.VIEW_DASHBOARD, PERMISSIONS.VIEW_NOTIFICATIONS]
+};

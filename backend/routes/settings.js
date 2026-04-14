@@ -1,22 +1,12 @@
 import express from 'express';
-import Settings from '../models/Settings.js';
-import { adminOnly, protect } from '../middleware/auth.js';
-import { asyncHandler } from '../utils/error.js';
+import { getSettings, upsertSetting } from '../controllers/settingsController.js';
+import { authorizePermissions, protect } from '../middleware/auth.js';
+import { PERMISSIONS } from '../utils/constants.js';
 
 const router = express.Router();
 
-router.get('/', asyncHandler(async (_, res) => {
-  let settings = await Settings.findOne();
-  if (!settings) settings = await Settings.create({});
-  res.json(settings);
-}));
-
-router.put('/', protect, adminOnly, asyncHandler(async (req, res) => {
-  let settings = await Settings.findOne();
-  if (!settings) settings = await Settings.create(req.body);
-  else Object.assign(settings, req.body);
-  await settings.save();
-  res.json(settings);
-}));
+router.use(protect);
+router.get('/', authorizePermissions(PERMISSIONS.MANAGE_SETTINGS), getSettings);
+router.post('/', authorizePermissions(PERMISSIONS.MANAGE_SETTINGS), upsertSetting);
 
 export default router;
