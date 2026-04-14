@@ -1,95 +1,80 @@
-# E-COM – Supabase Powered Production E-commerce
+# Production-Ready E-Commerce (React + Node + MongoDB)
 
-This project now runs as a **single Vite frontend** with Supabase as backend for:
-- Postgres database
-- Auth (customer + admin)
-- Storage (products / banners / categories)
-- RLS and role-based access
+Full-stack deployable e-commerce application with real backend APIs, JWT auth, MongoDB persistence, Cloudinary uploads, and admin panel.
 
-## Required environment variables
+## Tech Stack
+- Frontend: React + Vite + Tailwind + Axios
+- Backend: Node.js + Express + Mongoose
+- Database: MongoDB Atlas / local MongoDB
+- Auth: JWT + bcrypt
+- Uploads: Multer + Cloudinary
 
-Create `.env` from `.env.example`:
+## Folder Structure
+- `src/` Frontend app (customer + admin UI)
+- `backend/config` DB + cloudinary config
+- `backend/models` Mongoose models
+- `backend/routes` API routes
+- `backend/controllers` auth controller
+- `backend/middleware` auth + upload middleware
+- `backend/utils` error + token utils
+- `backend/scripts/seedAdmin.js` seed first admin
 
+## Setup
 ```bash
+npm install
+npm run backend:install
 cp .env.example .env
 ```
 
-```env
-VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
-```
+Fill all values in `.env`.
 
-## 1) Supabase setup
-
-1. Create a new Supabase project.
-2. Open SQL editor and run `supabase/migrations/20260414_init_ecom.sql`.
-3. In **Storage**, create buckets:
-   - `products` (public)
-   - `banners` (public)
-   - `categories` (public)
-4. In **Auth > URL Configuration**, set site URL to your Vercel URL and add `http://localhost:5173` in redirect URLs.
-
-## 2) Create first admin user
-
-1. Sign up from `/signup` or Auth dashboard.
-2. In SQL editor run:
-
-```sql
-update public.profiles
-set role = 'admin'
-where email = 'your-admin-email@example.com';
-```
-
-3. Login from `/admin/login`.
-
-## 3) Local run
-
+## Run (local)
 ```bash
-npm install
-npm run dev
+npm run dev:all
+```
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:5000`
+
+## Seed First Admin
+```bash
+npm --prefix backend run seed:admin
 ```
 
-## 4) Vercel deployment
+## Deploy
+### Frontend (Vercel)
+- Set build command: `npm run build`
+- Output: `dist`
+- Env: `VITE_API_BASE_URL=https://<your-backend-domain>/api`
 
-1. Import repo to Vercel.
-2. Build command: `npm run build`
-3. Output directory: `dist`
-4. Add env vars:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-5. Deploy.
+### Backend (Render/Railway/VPS)
+- Start command: `npm --prefix backend start`
+- Env: `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL`, Cloudinary vars
 
-## Functional checklist
+### Database
+- Use MongoDB Atlas connection in `MONGO_URI`.
 
-- Admin auth with role guard: `/admin/login`, `/admin/*`
-- Customer auth: `/login`, `/signup`, reset-password email flow
-- Product CRUD + category CRUD + image upload to storage
-- Cart/wishlist persisted in DB (not localStorage)
-- Checkout creates orders + order_items + coupon support
-- Admin order status and dispatch detail updates
-- Enquiry submit and admin read/delete
-- Banner and settings CMS
-- Dashboard analytics with real DB counts/sales
+### Images
+- Cloudinary stores product thumb/gallery and banners.
 
-## Important routes
+## Features Implemented
+### Customer
+- Homepage, category, shop, product details
+- Search/sort in listing
+- Cart + wishlist persisted in MongoDB
+- JWT signup/login/profile
+- Forgot/reset password token flow
+- Checkout with shipping/payment/coupon
+- Order history + tracking fields
+- Contact and about pages
 
-Customer:
-- `/`
-- `/login`
-- `/signup`
-- `/profile`
-- `/cart`
-- `/checkout`
-- `/orders`
+### Admin
+- Admin login/guard
+- Dashboard analytics
+- Product/category/banner/coupon CRUD
+- Order management + status updates
+- User and enquiry management
+- Settings management
+- Cloudinary image uploads
 
-Admin:
-- `/admin/login`
-- `/admin`
-- `/admin/products`
-- `/admin/orders`
-- `/admin/users`
-- `/admin/banners`
-- `/admin/enquiries`
-- `/admin/coupons`
-- `/admin/settings`
-- `/admin/categories`
+## API Health
+- `GET /api/health`

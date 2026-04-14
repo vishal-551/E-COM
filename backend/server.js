@@ -15,6 +15,8 @@ import contactRoutes from './routes/contact.js';
 import bannerRoutes from './routes/banner.js';
 import couponRoutes from './routes/coupon.js';
 import settingsRoutes from './routes/settings.js';
+import cartRoutes from './routes/cart.js';
+import wishlistRoutes from './routes/wishlist.js';
 import { adminOnly, protect } from './middleware/auth.js';
 import User from './models/User.js';
 import Order from './models/Order.js';
@@ -63,6 +65,8 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 app.get('/api/admin/analytics', protect, adminOnly, async (req, res, next) => {
   try {
