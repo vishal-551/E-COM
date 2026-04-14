@@ -1,94 +1,95 @@
-# E-COM – Production E-commerce + Admin Panel
+# E-COM – Supabase Powered Production E-commerce
 
-This project uses a split deployment:
-- **Frontend (Vite/React)** on Vercel.
-- **Backend (Express/MongoDB)** on Render/Railway.
+This project now runs as a **single Vite frontend** with Supabase as backend for:
+- Postgres database
+- Auth (customer + admin)
+- Storage (products / banners / categories)
+- RLS and role-based access
 
-Admin login calls `POST /api/auth/login` on your backend URL.
+## Required environment variables
 
-## Local Setup
+Create `.env` from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+```env
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-anon-key>
+```
+
+## 1) Supabase setup
+
+1. Create a new Supabase project.
+2. Open SQL editor and run `supabase/migrations/20260414_init_ecom.sql`.
+3. In **Storage**, create buckets:
+   - `products` (public)
+   - `banners` (public)
+   - `categories` (public)
+4. In **Auth > URL Configuration**, set site URL to your Vercel URL and add `http://localhost:5173` in redirect URLs.
+
+## 2) Create first admin user
+
+1. Sign up from `/signup` or Auth dashboard.
+2. In SQL editor run:
+
+```sql
+update public.profiles
+set role = 'admin'
+where email = 'your-admin-email@example.com';
+```
+
+3. Login from `/admin/login`.
+
+## 3) Local run
 
 ```bash
 npm install
-cp .env.example .env
-npm run dev:all
+npm run dev
 ```
 
-- Frontend: `http://localhost:5173`
-- Backend health: `http://localhost:5000/api/health`
+## 4) Vercel deployment
 
-## Environment Variables
+1. Import repo to Vercel.
+2. Build command: `npm run build`
+3. Output directory: `dist`
+4. Add env vars:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+5. Deploy.
 
-Use `.env.example` as your baseline.
+## Functional checklist
 
-### Backend (Render/Railway)
-Required:
-- `MONGO_URI`
-- `JWT_SECRET`
-- `CLIENT_URL` (your Vercel URL; can be comma-separated)
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
+- Admin auth with role guard: `/admin/login`, `/admin/*`
+- Customer auth: `/login`, `/signup`, reset-password email flow
+- Product CRUD + category CRUD + image upload to storage
+- Cart/wishlist persisted in DB (not localStorage)
+- Checkout creates orders + order_items + coupon support
+- Admin order status and dispatch detail updates
+- Enquiry submit and admin read/delete
+- Banner and settings CMS
+- Dashboard analytics with real DB counts/sales
 
-Recommended:
-- `NODE_ENV=production`
-- `PORT=5000` (Render/Railway may override)
-- `SEED_ADMIN_EMAIL`
-- `SEED_ADMIN_PASSWORD`
+## Important routes
 
-### Frontend (Vercel)
-Required:
-- `VITE_API_BASE_URL=https://<your-backend-domain>/api`
+Customer:
+- `/`
+- `/login`
+- `/signup`
+- `/profile`
+- `/cart`
+- `/checkout`
+- `/orders`
 
-> Example: `https://e-com-api.onrender.com/api`
-
-## Deployment
-
-### 1) Backend first (Render or Railway)
-
-#### Render (Blueprint optional)
-This repo includes `render.yaml` for backend service creation.
-
-Manual Render settings:
-- **Root directory**: `backend`
-- **Build command**: `npm install`
-- **Start command**: `npm start`
-- **Health check path**: `/api/health`
-
-Railway equivalent:
-- Deploy from `backend/`
-- Start command: `npm start`
-- Add the same backend environment variables.
-
-### 2) Frontend on Vercel
-- Framework preset: Vite
-- Build command: `npm run build`
-- Output directory: `dist`
-- Set env var: `VITE_API_BASE_URL=https://<your-backend-domain>/api`
-
-## API Checks
-
-After deployment, verify:
-
-```bash
-curl https://<your-backend-domain>/api/health
-```
-
-Expected JSON contains `ok: true`.
-
-```bash
-curl -X POST https://<your-backend-domain>/api/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin@example.com","password":"Admin@123"}'
-```
-
-Expected: token + user object (or a clear JSON error message if credentials are wrong).
-
-## Why "Network Error" happens in admin login
-
-Usually one of these:
-- `VITE_API_BASE_URL` missing or still pointing to localhost.
-- Backend not deployed or sleeping/down.
-- Backend CORS does not include Vercel domain in `CLIENT_URL`.
-
-The current code now reports clearer errors for these cases.
+Admin:
+- `/admin/login`
+- `/admin`
+- `/admin/products`
+- `/admin/orders`
+- `/admin/users`
+- `/admin/banners`
+- `/admin/enquiries`
+- `/admin/coupons`
+- `/admin/settings`
+- `/admin/categories`
