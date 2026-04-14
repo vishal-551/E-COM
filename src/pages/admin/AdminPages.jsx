@@ -1,142 +1,161 @@
-import { useMemo, useState } from 'react';
-import { useStore } from '../../context/StoreContext';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../../utils/api';
+import { clearAdminSession, setAdminSession } from '../../utils/adminAuth';
 
 const toast = (msg) => window.alert(msg);
-const slugify = (v) => v.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
 const card = 'rounded-2xl border border-cyan-400/20 bg-white/10 backdrop-blur-lg shadow-[0_0_40px_rgba(20,184,166,0.15)] p-4';
-const statusColors = {
-  'Order placed': 'bg-sky-300/20 text-sky-100',
-  Processing: 'bg-violet-300/20 text-violet-100',
-  Shipped: 'bg-amber-300/20 text-amber-100',
-  Delivered: 'bg-emerald-300/20 text-emerald-100',
-  Cancelled: 'bg-rose-300/20 text-rose-100',
+const statusList = ['Pending', 'Confirmed', 'Packed', 'Dispatched', 'Delivered', 'Cancelled'];
+
+const Uploader = ({ multiple = false, onUploaded }) => {
+  const onChange = async (e) => {
+    const files = [...e.target.files];
+    if (!files.length) return;
+    const fd = new FormData();
+    files.forEach((f) => fd.append(multiple ? 'images' : 'image', f));
+    const endpoint = multiple ? '/upload/multiple' : '/upload/single';
+    const { data } = await api.post(endpoint, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    onUploaded(multiple ? data : [data]);
+  };
+  return <input type="file" accept="image/*" multiple={multiple} onChange={onChange} className="border p-2 rounded w-full bg-black/20" />;
 };
 
-const StatusPill = ({ status }) => <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[status] || 'bg-white/20 text-white'}`}>{status}</span>;
-
 export const AdminLoginPage = () => {
-  const [email, setEmail] = useState('admin@khushijewallary.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [ok, setOk] = useState(localStorage.getItem('aaj_admin') === '1');
-  if (ok) return <div className="py-8"><a href="/admin/dashboard" className="text-gold">Go to Dashboard</a></div>;
+  const navigate = useNavigate();
 
-  const login = () => {
-    setLoading(true);
-    setTimeout(() => {
-      if (email && password) {
-        localStorage.setItem('aaj_admin', '1');
-        localStorage.setItem('aaj_admin_token', `jwt-demo-${Date.now()}`);
-        toast('Admin login successful');
-        setOk(true);
-      }
+  const login = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.post('/auth/login', { email, password });
+      if (data.user?.role !== 'admin') throw new Error('Admin access required');
+      setAdminSession(data.token);
+      navigate('/admin', { replace: true });
+    } catch (e) {
+      toast(e.response?.data?.message || e.message || 'Login failed');
+    } finally {
       setLoading(false);
-    }, 700);
+    }
   };
 
-  return <div className="py-8 max-w-md mx-auto"><div className={card}><h1 className="section-title">Admin Login</h1><input value={email} onChange={(e) => setEmail(e.target.value)} className="border p-2 rounded w-full my-2 bg-black/20"/><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="border p-2 rounded w-full bg-black/20"/><button disabled={loading} onClick={login} className="bg-charcoal text-white w-full mt-3 py-2 rounded">{loading ? 'Authenticating...' : 'Login'}</button></div></div>;
+  return <div className="py-8 max-w-md mx-auto"><div className={card}><h1 className="section-title">Admin Login</h1><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="border p-2 rounded w-full my-2 bg-black/20"/><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Password" className="border p-2 rounded w-full bg-black/20"/><button disabled={loading} onClick={login} className="bg-charcoal text-white w-full mt-3 py-2 rounded">{loading ? 'Authenticating...' : 'Login'}</button></div></div>;
 };
 
 export const AdminDashboard = () => {
-  const { products, users, orders, enquiries, activities } = useStore();
-  const [range, setRange] = useState('7d');
-  const revenue = orders.reduce((s, o) => s + (o.total || 0), 0);
-  const recentOrders = useMemo(() => {
-    const days = { '7d': 7, '30d': 30, '90d': 90 }[range] || 7;
-    const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
-    return orders.filter((o) => new Date(o.date || 0).getTime() >= cutoff);
-  }, [orders, range]);
-  const conversion = users.length ? Math.round((recentOrders.length / users.length) * 100) : 0;
-  const orderStatus = useMemo(() => recentOrders.reduce((acc, order) => ({ ...acc, [order.status]: (acc[order.status] || 0) + 1 }), {}), [recentOrders]);
-  const categoryPerformance = useMemo(() => {
-    const mapped = products.reduce((acc, product) => ({ ...acc, [product.category]: (acc[product.category] || 0) + 1 }), {});
-    return Object.entries(mapped).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [products]);
-  const topStatusCount = Math.max(...Object.values(orderStatus), 1);
+  const [data, setData] = useState(null);
+  useEffect(() => { api.get('/admin/analytics').then((r) => setData(r.data)); }, []);
+  if (!data) return <div className="py-8">Loading analytics...</div>;
   const stats = [
-    ['Total users', users.length], ['Orders (range)', recentOrders.length], ['Total revenue', `₹${revenue}`], ['Contact enquiries', enquiries.length], ['Conversion rate', `${conversion}%`],
+    ['Total sales', `₹${data.totalSales}`], ['Total orders', data.totalOrders], ['Pending', data.pendingOrders], ['Dispatched', data.dispatchedOrders], ['Delivered', data.deliveredOrders], ['Cancelled', data.cancelledOrders], ['Total products', data.totalProducts], ['Low stock', data.lowStockCount], ['Total users', data.totalUsers],
   ];
-  return <div className="py-8 space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><h1 className="section-title">Neon Admin Dashboard</h1><div className="flex items-center gap-2">{['7d', '30d', '90d'].map((option) => <button key={option} onClick={() => setRange(option)} className={`rounded-full px-3 py-1 text-sm ${range === option ? 'bg-cyan-500 text-white' : 'bg-white/10 text-cyan-100'}`}>{option.toUpperCase()}</button>)}</div></div><div className="grid md:grid-cols-5 gap-3">{stats.map(([k, v]) => <div key={k} className={card}><p className="text-sm text-cyan-100">{k}</p><p className="text-2xl font-semibold text-white">{v}</p></div>)}</div><div className="grid lg:grid-cols-2 gap-3"><div className={card}><h3 className="font-semibold mb-2 text-cyan-100">Order status overview</h3><div className="space-y-2">{Object.keys(orderStatus).length ? Object.entries(orderStatus).map(([status, count]) => <div key={status}><div className="mb-1 flex items-center justify-between text-sm"><StatusPill status={status} /><span className="text-white">{count}</span></div><div className="h-2 rounded-full bg-white/10"><div className="h-2 rounded-full bg-gradient-to-r from-cyan-400 to-violet-400" style={{ width: `${Math.round((count / topStatusCount) * 100)}%` }} /></div></div>) : <p className="text-sm text-white/90">No orders in selected range.</p>}</div></div><div className={card}><h3 className="font-semibold mb-2 text-cyan-100">Category performance (demo)</h3><div className="space-y-2">{categoryPerformance.map(([category, count]) => <div key={category} className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2 text-sm"><span className="text-white">{category}</span><span className="text-cyan-100">{count} products</span></div>)}{!categoryPerformance.length && <p className="text-sm text-white/90">Add products to see category metrics.</p>}</div></div></div><div className={card}><h3 className="font-semibold mb-2 text-cyan-100">Recent activity</h3>{activities.length ? activities.slice(0, 6).map((a) => <p key={a.id} className="text-sm text-white/90">• {a.message}</p>) : <p className="text-sm text-white/90">No recent activity.</p>}</div></div>;
+  return <div className="py-8 space-y-4"><h1 className="section-title">Admin Dashboard</h1><div className="grid md:grid-cols-3 lg:grid-cols-5 gap-3">{stats.map(([k, v]) => <div key={k} className={card}><p className="text-sm text-cyan-100">{k}</p><p className="text-2xl font-semibold text-white">{v}</p></div>)}</div><div className="grid lg:grid-cols-2 gap-3"><div className={card}><h3 className="font-semibold mb-2">Latest orders</h3>{data.latestOrders.map((o) => <p key={o._id} className="text-sm">#{o._id.slice(-6)} • {o.user?.name} • ₹{o.total} • {o.status}</p>)}</div><div className={card}><h3 className="font-semibold mb-2">Latest customers</h3>{data.latestCustomers.map((u) => <p key={u._id} className="text-sm">{u.name} • {u.email}</p>)}</div></div></div>;
 };
 
 export const AdminProducts = () => {
-  const { products, setProducts, categories, addActivity } = useStore();
-  const [form, setForm] = useState({ name: '', category: categories[0]?.name || '', price: 999, oldPrice: 1299, description: '', thumbnail: '' });
-  const [preview, setPreview] = useState('');
+  const empty = { name: '', slug: '', description: '', category: '', brand: '', price: 0, salePrice: 0, stock: 0, sku: '', featured: false, isActive: true, thumbnail: null, galleryImages: [] };
+  const [form, setForm] = useState(empty);
+  const [rows, setRows] = useState([]);
+  const [filters, setFilters] = useState({ q: '', category: '', isActive: '' });
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [editingId, setEditingId] = useState('');
 
-  const saveProduct = () => {
-    const payload = {
-      ...form,
-      id: Date.now(),
-      slug: slugify(form.name),
-      discount: Math.round(((form.oldPrice - form.price) / form.oldPrice) * 100),
-      reviewCount: 0,
-      rating: 0,
-      images: [form.thumbnail, ...(preview ? [preview] : [])].filter(Boolean),
-      availability: 'In Stock',
-      shortDescription: form.description,
-      tags: ['new', 'offer'],
-    };
-    setProducts([payload, ...products]);
-    addActivity(`Product added: ${payload.name}`);
-    toast('Product added');
-    setForm({ ...form, name: '', description: '', thumbnail: '' });
-    setPreview('');
+  const load = () => api.get('/products', { params: { ...filters, page, limit: 8 } }).then(({ data }) => { setRows(data.items); setPages(data.pages || 1); });
+  useEffect(() => { load(); }, [page]);
+
+  const submit = async () => {
+    const payload = { ...form, slug: form.slug || form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') };
+    if (editingId) await api.put(`/products/${editingId}`, payload); else await api.post('/products', payload);
+    setForm(empty); setEditingId(''); load();
   };
+  const edit = (item) => { setEditingId(item._id); setForm({ ...item, salePrice: item.salePrice || 0 }); };
+  const remove = async (id) => { if (window.confirm('Delete product?')) { await api.delete(`/products/${id}`); load(); } };
 
-  const del = (id) => {
-    setProducts(products.filter((p) => p.id !== id));
-    addActivity(`Product deleted: ${id}`);
-  };
-
-  return <div className="py-8 grid lg:grid-cols-3 gap-4"><div className={`${card} space-y-2`}>{Object.entries(form).map(([k, v]) => k === 'category' ? <select key={k} value={v} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className="border p-2 rounded w-full bg-black/20">{categories.map((c) => <option key={c.id || c.name}>{c.name}</option>)}</select> : <input key={k} value={v} onChange={(e) => { setForm({ ...form, [k]: e.target.value }); if (k === 'thumbnail') setPreview(e.target.value); }} placeholder={k} className="border p-2 rounded w-full bg-black/20" />)}{preview && <img src={preview} className="h-24 w-full object-cover rounded" />}<button onClick={saveProduct} className="w-full bg-charcoal text-white py-2 rounded">Save Product</button></div><div className="lg:col-span-2 space-y-2">{products.slice(0, 25).map((p) => <div key={p.id} className={`${card} flex justify-between`}><div>{p.name}<p className="text-xs">₹{p.price} • {p.category}</p></div><button onClick={() => del(p.id)} className="text-red-300">Delete</button></div>)}</div></div>;
-};
-
-export const AdminCategories = () => {
-  const { categories, setCategories, addActivity } = useStore();
-  const [name, setName] = useState('');
-  return <div className="py-8"><h1 className="section-title mb-3">Manage Categories</h1><div className={card}><input value={name} onChange={(e) => setName(e.target.value)} className="border p-2 rounded bg-black/20" placeholder="Category"/><button onClick={() => { setCategories([...categories, { id: Date.now(), name, slug: slugify(name) }]); addActivity(`Category added: ${name}`); setName(''); }} className="ml-2 bg-charcoal text-white px-3 py-2 rounded">Add</button><div className="mt-3 flex flex-wrap gap-2">{categories.map((c) => <span key={c.id} className="bg-blush/70 px-2 py-1 rounded text-sm">{c.name}</span>)}</div></div></div>;
+  return <div className="py-8 grid lg:grid-cols-3 gap-4"><div className={`${card} space-y-2`}>
+    {['name', 'slug', 'description', 'category', 'brand', 'price', 'salePrice', 'stock', 'sku'].map((k) => <input key={k} value={form[k] ?? ''} onChange={(e) => setForm({ ...form, [k]: ['price', 'salePrice', 'stock'].includes(k) ? Number(e.target.value) : e.target.value })} placeholder={k} className="border p-2 rounded w-full bg-black/20" />)}
+    <label className="flex gap-2"><input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })}/>featured</label>
+    <label className="flex gap-2"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })}/>active</label>
+    <Uploader onUploaded={(images) => setForm({ ...form, thumbnail: images[0] })} />
+    {form.thumbnail?.url && <img src={form.thumbnail.url} className="h-20 rounded"/>}
+    <Uploader multiple onUploaded={(images) => setForm({ ...form, galleryImages: [...form.galleryImages, ...images] })} />
+    <div className="grid grid-cols-4 gap-2">{form.galleryImages.map((g) => <img key={g.publicId} src={g.url} className="h-16 w-full object-cover rounded" />)}</div>
+    <button onClick={submit} className="w-full bg-charcoal text-white py-2 rounded">{editingId ? 'Update' : 'Create'} Product</button>
+  </div><div className="lg:col-span-2 space-y-2"><div className={card}><div className="grid md:grid-cols-4 gap-2"><input value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="Search" className="border p-2 rounded bg-black/20"/><input value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })} placeholder="Category" className="border p-2 rounded bg-black/20"/><select value={filters.isActive} onChange={(e) => setFilters({ ...filters, isActive: e.target.value })} className="border p-2 rounded bg-black/20"><option value="">All status</option><option value="true">Active</option><option value="false">Inactive</option></select><button onClick={() => { setPage(1); load(); }} className="bg-charcoal text-white rounded">Apply</button></div></div>{rows.map((p) => <div key={p._id} className={`${card} flex justify-between items-center`}><div className="flex items-center gap-3"><img src={p.thumbnail?.url} className="h-12 w-12 rounded object-cover"/><div><p>{p.name}</p><p className="text-xs">{p.category} • SKU:{p.sku} • Stock: <span className={p.stock <= 5 ? 'text-red-300' : 'text-emerald-300'}>{p.stock}</span></p></div></div><div className="space-x-2"><button onClick={() => edit(p)} className="text-cyan-200">Edit</button><button onClick={() => remove(p._id)} className="text-red-300">Delete</button></div></div>)}<div className="flex gap-2"><button disabled={page <= 1} onClick={() => setPage(page - 1)}>Prev</button><span>{page}/{pages}</span><button disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</button></div></div></div>;
 };
 
 export const AdminOrders = () => {
-  const { orders } = useStore();
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [query, setQuery] = useState('');
-  const visibleOrders = useMemo(() => orders.filter((order) => {
-    const statusMatch = statusFilter === 'All' || order.status === statusFilter;
-    const queryMatch = String(order.id).toLowerCase().includes(query.toLowerCase());
-    return statusMatch && queryMatch;
-  }), [orders, statusFilter, query]);
-  const statusOptions = ['All', ...new Set(orders.map((o) => o.status))];
+  const [orders, setOrders] = useState([]);
+  const [filter, setFilter] = useState({ status: '', paymentStatus: '' });
+  const [selected, setSelected] = useState(null);
+  const [dispatch, setDispatch] = useState({ courierPartner: '', trackingId: '', dispatchDate: '', estimatedDeliveryDate: '' });
+  const load = () => api.get('/orders', { params: filter }).then((r) => setOrders(r.data));
+  useEffect(() => { load(); }, [filter.status, filter.paymentStatus]);
 
-  return <div className="py-8 space-y-3"><h1 className="section-title mb-1">Manage Orders</h1><div className={`${card} grid md:grid-cols-3 gap-2`}><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by order ID" className="rounded border border-white/20 bg-black/20 p-2" /><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded border border-white/20 bg-black/20 p-2">{statusOptions.map((status) => <option key={status}>{status}</option>)}</select><p className="self-center text-sm text-cyan-100">Showing {visibleOrders.length} of {orders.length} orders</p></div>{visibleOrders.map((o) => <div key={o.id} className={`${card} mb-2 flex flex-wrap items-center justify-between gap-2`}><div><p className="font-medium text-white">{o.id}</p><p className="text-xs text-cyan-100">{new Date(o.date || Date.now()).toLocaleString()}</p></div><div className="text-white">₹{o.total}</div><StatusPill status={o.status} /></div>)}{!orders.length && <div className={card}>No orders yet.</div>}{!!orders.length && !visibleOrders.length && <div className={card}>No orders match selected filters.</div>}</div>;
+  const updateStatus = async (order, status) => {
+    await api.patch(`/orders/${order._id}/status`, { ...dispatch, status });
+    load();
+  };
+
+  return <div className="py-8 space-y-3"><h1 className="section-title">Orders</h1><div className={card}><div className="grid md:grid-cols-3 gap-2"><select value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })} className="border p-2 rounded bg-black/20"><option value="">All statuses</option>{statusList.map((s) => <option key={s}>{s}</option>)}</select><select value={filter.paymentStatus} onChange={(e) => setFilter({ ...filter, paymentStatus: e.target.value })} className="border p-2 rounded bg-black/20"><option value="">All payments</option><option value="paid">Paid</option><option value="unpaid">Unpaid</option></select><button onClick={load} className="bg-charcoal text-white rounded">Refresh</button></div></div>{orders.map((o) => <div key={o._id} className={card}><div className="flex justify-between"><div><p>#{o._id}</p><p className="text-xs">{o.user?.name} • {o.paymentMethod} • {o.paymentStatus} • ₹{o.total}</p></div><select value={o.status} onChange={(e) => updateStatus(o, e.target.value)} className="border p-2 rounded bg-black/20">{statusList.map((s) => <option key={s}>{s}</option>)}</select></div><div className="mt-2 flex gap-2"><button onClick={() => setSelected(o)} className="text-cyan-200">Details</button></div></div>)}{selected && <div className={card}><h3 className="font-semibold">Order details #{selected._id}</h3><p>{selected.shipping?.name} • {selected.shipping?.address}</p><p>{selected.items?.map((i) => `${i.name} x ${i.qty}`).join(', ')}</p><div className="grid md:grid-cols-4 gap-2 mt-2">{['courierPartner', 'trackingId', 'dispatchDate', 'estimatedDeliveryDate'].map((k) => <input key={k} placeholder={k} value={dispatch[k]} onChange={(e) => setDispatch({ ...dispatch, [k]: e.target.value })} className="border p-2 rounded bg-black/20" />)}</div><div className="mt-2">Timeline:{selected.statusHistory?.map((h) => <p key={`${h.status}-${h.at}`}>{h.status} • {new Date(h.at).toLocaleString()}</p>)}</div></div>}</div>;
+};
+
+export const AdminUsers = () => {
+  const [q, setQ] = useState('');
+  const [users, setUsers] = useState([]);
+  const load = () => api.get('/users', { params: { q } }).then((r) => setUsers(r.data));
+  useEffect(() => { load(); }, []);
+  return <div className="py-8"><h1 className="section-title mb-3">Users</h1><div className={card}><div className="flex gap-2 mb-3"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search users" className="border p-2 rounded bg-black/20 flex-1"/><button onClick={load} className="bg-charcoal text-white rounded px-3">Search</button></div>{users.map((u) => <div key={u._id} className="flex justify-between border-b border-white/10 py-2 text-sm"><span>{u.name} • {u.email} • Orders:{u.orderCount} • Joined:{new Date(u.createdAt).toLocaleDateString()}</span><div className="space-x-2"><button onClick={async () => { await api.patch(`/users/${u._id}/block`, { isBlocked: !u.isBlocked }); load(); }} className="text-amber-200">{u.isBlocked ? 'Unblock' : 'Block'}</button><button onClick={async () => { if (window.confirm('Delete user?')) { await api.delete(`/users/${u._id}`); load(); } }} className="text-red-300">Delete</button></div></div>)}</div></div>;
 };
 
 export const AdminBanners = () => {
-  const { banners, setBanners, settings, setSettings, addActivity } = useStore();
-  const [title, setTitle] = useState('');
-  const [image, setImage] = useState('');
-  return <div className="py-8 space-y-3"><h1 className="section-title">Banner & Media Control</h1><div className={card}><div className="grid md:grid-cols-3 gap-2"><input value={title} onChange={(e) => setTitle(e.target.value)} className="border p-2 rounded bg-black/20" placeholder="Banner title"/><input value={image} onChange={(e) => setImage(e.target.value)} className="border p-2 rounded bg-black/20" placeholder="Banner image URL"/><button onClick={() => { setBanners([...banners, { id: Date.now(), title, subtitle: 'New banner', image, cta: 'Shop now' }]); addActivity(`Banner added: ${title}`); setTitle(''); setImage(''); }} className="bg-charcoal text-white px-3 py-2 rounded">Upload banner</button></div></div><div className={card}><h3 className="font-semibold mb-2">Hero & thumbnail images</h3><input placeholder="Hero image URL" className="border p-2 rounded bg-black/20 mr-2" onKeyDown={(e) => { if (e.key === 'Enter') setSettings({ ...settings, heroImages: [...settings.heroImages, e.currentTarget.value] }); }} /><input placeholder="Thumbnail URL" className="border p-2 rounded bg-black/20" onKeyDown={(e) => { if (e.key === 'Enter') setSettings({ ...settings, thumbnailImages: [...settings.thumbnailImages, e.currentTarget.value] }); }} /></div></div>;
+  const [rows, setRows] = useState([]);
+  const [form, setForm] = useState({ title: '', subtitle: '', cta: '', image: null, order: 0, active: true });
+  const load = () => api.get('/banners').then((r) => setRows(r.data));
+  useEffect(() => { load(); }, []);
+
+  return <div className="py-8"><h1 className="section-title mb-3">Banners</h1><div className={card}><div className="grid md:grid-cols-5 gap-2">{['title', 'subtitle', 'cta', 'order'].map((k) => <input key={k} value={form[k]} onChange={(e) => setForm({ ...form, [k]: k === 'order' ? Number(e.target.value) : e.target.value })} placeholder={k} className="border p-2 rounded bg-black/20" />)}<Uploader onUploaded={(images) => setForm({ ...form, image: images[0] })} /></div><button onClick={async () => { await api.post('/banners', form); setForm({ title: '', subtitle: '', cta: '', image: null, order: 0, active: true }); load(); }} className="mt-2 bg-charcoal text-white px-3 py-2 rounded">Create banner</button></div><div className="mt-3 space-y-2">{rows.map((b) => <div key={b._id} className={`${card} flex justify-between items-center`}><div className="flex items-center gap-2"><img src={b.image?.url} className="h-12 w-20 object-cover rounded"/><span>{b.title}</span></div><button onClick={async () => { if (window.confirm('Delete banner?')) { await api.delete(`/banners/${b._id}`); load(); } }} className="text-red-300">Delete</button></div>)}</div></div>;
 };
 
-export const AdminCustomers = () => {
-  const { enquiries, setEnquiries } = useStore();
-  const toggle = (id) => setEnquiries((p) => p.map((e) => e.id === id ? { ...e, isRead: !e.isRead } : e));
-  return <div className="py-8"><h1 className="section-title mb-3">Enquiry Management</h1>{enquiries.map((e) => <div key={e.id} className={`${card} mb-2 flex justify-between`}><div>{e.name} • {e.subject}<p className="text-xs">{e.email}</p></div><button onClick={() => toggle(e.id)} className="text-cyan-200">Mark as {e.isRead ? 'unread' : 'read'}</button></div>)}{!enquiries.length && <div className={card}>No enquiries yet.</div>}</div>;
+export const AdminEnquiries = () => {
+  const [rows, setRows] = useState([]);
+  const [q, setQ] = useState('');
+  const [isRead, setIsRead] = useState('');
+  const load = () => api.get('/contact', { params: { q, isRead } }).then((r) => setRows(r.data));
+  useEffect(() => { load(); }, []);
+
+  return <div className="py-8"><h1 className="section-title mb-3">Enquiries</h1><div className={card}><div className="grid md:grid-cols-4 gap-2"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="border p-2 rounded bg-black/20"/><select value={isRead} onChange={(e) => setIsRead(e.target.value)} className="border p-2 rounded bg-black/20"><option value="">All</option><option value="false">Unread</option><option value="true">Read</option></select><button onClick={load} className="bg-charcoal text-white rounded">Apply</button></div>{rows.map((e) => <div key={e._id} className="flex justify-between border-b border-white/10 py-2"><span>{e.name} • {e.email} • {e.subject}</span><div className="space-x-2"><button onClick={async () => { await api.patch(`/contact/${e._id}/read`, { isRead: !e.isRead }); load(); }} className="text-cyan-200">Mark {e.isRead ? 'Unread' : 'Read'}</button><button onClick={async () => { await api.delete(`/contact/${e._id}`); load(); }} className="text-red-300">Delete</button></div></div>)}</div></div>;
 };
 
 export const AdminCoupons = () => {
-  const { offers, setOffers } = useStore();
-  const [offer, setOffer] = useState({ title: '', type: 'percent', value: 10, applyType: 'category', target: '' });
-  return <div className="py-8"><h1 className="section-title mb-3">Offers Management</h1><div className={card}><div className="grid md:grid-cols-5 gap-2"><input value={offer.title} onChange={(e) => setOffer({ ...offer, title: e.target.value })} className="border p-2 rounded bg-black/20" placeholder="Offer title"/><select value={offer.type} onChange={(e) => setOffer({ ...offer, type: e.target.value })} className="border p-2 rounded bg-black/20"><option value="percent">%</option><option value="fixed">Fixed</option></select><input value={offer.value} onChange={(e) => setOffer({ ...offer, value: Number(e.target.value) })} className="border p-2 rounded bg-black/20" type="number"/><select value={offer.applyType} onChange={(e) => setOffer({ ...offer, applyType: e.target.value })} className="border p-2 rounded bg-black/20"><option value="category">Category</option><option value="product">Product</option></select><input value={offer.target} onChange={(e) => setOffer({ ...offer, target: e.target.value })} className="border p-2 rounded bg-black/20" placeholder="Target"/></div><button onClick={() => { setOffers([{ ...offer, id: Date.now() }, ...offers]); toast('Offer created'); }} className="mt-2 bg-charcoal text-white px-3 py-2 rounded">Create offer</button><div className="mt-3 space-y-2">{offers.map((o) => <div key={o.id} className="text-sm">{o.title} • {o.value}{o.type === 'percent' ? '%' : '₹'} on {o.applyType}: {o.target}</div>)}</div></div></div>;
+  const empty = { code: '', type: 'percentage', value: 10, minOrderAmount: 0, expiry: '', active: true };
+  const [rows, setRows] = useState([]);
+  const [form, setForm] = useState(empty);
+  const [editId, setEditId] = useState('');
+  const load = () => api.get('/coupons').then((r) => setRows(r.data));
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    if (editId) await api.put(`/coupons/${editId}`, form); else await api.post('/coupons', form);
+    setForm(empty); setEditId(''); load();
+  };
+
+  return <div className="py-8"><h1 className="section-title mb-3">Coupons</h1><div className={card}><div className="grid md:grid-cols-6 gap-2"><input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Code" className="border p-2 rounded bg-black/20"/><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="border p-2 rounded bg-black/20"><option value="percentage">Percentage</option><option value="fixed">Fixed</option></select><input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: Number(e.target.value) })} placeholder="Value" className="border p-2 rounded bg-black/20"/><input type="number" value={form.minOrderAmount} onChange={(e) => setForm({ ...form, minOrderAmount: Number(e.target.value) })} placeholder="Min order" className="border p-2 rounded bg-black/20"/><input type="date" value={form.expiry} onChange={(e) => setForm({ ...form, expiry: e.target.value })} className="border p-2 rounded bg-black/20"/><button onClick={save} className="bg-charcoal text-white rounded">{editId ? 'Update' : 'Create'}</button></div>{rows.map((c) => <div key={c._id} className="flex justify-between border-b border-white/10 py-2"><span>{c.code} • {c.type} • {c.value} • min ₹{c.minOrderAmount} • {new Date(c.expiry).toLocaleDateString()} • {c.active ? 'Active' : 'Inactive'}</span><div className="space-x-2"><button onClick={() => { setEditId(c._id); setForm({ ...c, expiry: c.expiry?.slice(0, 10) }); }} className="text-cyan-200">Edit</button><button onClick={async () => { await api.put(`/coupons/${c._id}`, { ...c, active: !c.active }); load(); }} className="text-amber-200">{c.active ? 'Disable' : 'Enable'}</button><button onClick={async () => { await api.delete(`/coupons/${c._id}`); load(); }} className="text-red-300">Delete</button></div></div>)}</div></div>;
 };
 
-export const AdminReviews = () => <div className="py-8"><h1 className="section-title">Reviews Management</h1><div className={card}>Review moderation module placeholder.</div></div>;
-
 export const AdminSettings = () => {
-  const { settings, setSettings, users, setUsers } = useStore();
-  const [draft, setDraft] = useState(settings);
-  const blockedCount = useMemo(() => users.filter((u) => u.isBlocked).length, [users]);
+  const [form, setForm] = useState(null);
+  useEffect(() => { api.get('/settings').then((r) => setForm(r.data)); }, []);
+  if (!form) return <div className="py-8">Loading settings...</div>;
+  const update = async () => { await api.put('/settings', form); toast('Saved'); };
+  return <div className="py-8"><h1 className="section-title mb-3">Settings & Content</h1><div className={`${card} grid md:grid-cols-2 gap-2`}>{['storeName', 'homeText', 'aboutText', 'footerText', 'promoText'].map((k) => <input key={k} value={form[k] || ''} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className="border p-2 rounded bg-black/20" placeholder={k} />)}{['instagram', 'facebook', 'youtube', 'whatsapp'].map((k) => <input key={k} value={form.socialLinks?.[k] || ''} onChange={(e) => setForm({ ...form, socialLinks: { ...form.socialLinks, [k]: e.target.value } })} className="border p-2 rounded bg-black/20" placeholder={k} />)}<button onClick={update} className="md:col-span-2 bg-charcoal text-white py-2 rounded">Save</button></div></div>;
+};
 
-  return <div className="py-8 space-y-3"><h1 className="section-title">Content & Social Management</h1><div className={`${card} grid md:grid-cols-2 gap-2`}>{Object.entries(draft).map(([k, v]) => <input key={k} value={Array.isArray(v) ? v.join(',') : v} onChange={(e) => setDraft({ ...draft, [k]: e.target.value })} className="border p-2 rounded bg-black/20" placeholder={k} />)}<button onClick={() => { setSettings({ ...draft, heroImages: String(draft.heroImages || '').split(',').filter(Boolean), thumbnailImages: String(draft.thumbnailImages || '').split(',').filter(Boolean) }); toast('Content updated'); }} className="md:col-span-2 bg-charcoal text-white py-2 rounded">Save Content</button></div><div className={card}><h3 className="font-semibold mb-2">User Management</h3><p className="text-sm mb-2">Registered users: {users.length} • Blocked: {blockedCount}</p>{users.map((u) => <div key={u.id} className="flex justify-between text-sm border-b border-white/10 py-1"><span>{u.name} ({u.email})</span><div className="space-x-2"><button onClick={() => setUsers((p) => p.map((x) => x.id === u.id ? { ...x, isBlocked: !x.isBlocked } : x))} className="text-amber-200">{u.isBlocked ? 'Unblock' : 'Block'}</button><button onClick={() => setUsers((p) => p.filter((x) => x.id !== u.id))} className="text-red-300">Delete</button></div></div>)}</div></div>;
+export const AdminCategories = () => <div className="py-8"><div className={card}>Categories are managed as product category values.</div></div>;
+export const AdminReviews = () => <div className="py-8"><div className={card}>Reviews module stays unchanged.</div></div>;
+
+export const AdminLogoutButton = () => {
+  const navigate = useNavigate();
+  return <button onClick={() => { clearAdminSession(); navigate('/admin/login'); }} className="bg-rose-700 text-white px-3 py-1 rounded">Logout</button>;
 };

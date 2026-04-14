@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import { Readable } from 'stream';
 import connectDB from './config/db.js';
 import { errorHandler, notFound } from './utils/error.js';
 import authRoutes from './routes/auth.js';
@@ -17,12 +18,24 @@ import settingsRoutes from './routes/settings.js';
 import { adminOnly, protect } from './middleware/auth.js';
 import User from './models/User.js';
 import Order from './models/Order.js';
+import Product from './models/Product.js';
+import cloudinary from './config/cloudinary.js';
+import { upload } from './middleware/upload.js';
+import UploadAsset from './models/UploadAsset.js';
 
 dotenv.config();
 
 const app = express();
 app.use(cors({ origin: process.env.CLIENT_URL?.split(',') || '*' }));
 app.use(express.json({ limit: '5mb' }));
+
+const uploadBufferToCloudinary = (file, folder = 'ecom') => new Promise((resolve, reject) => {
+  const stream = cloudinary.uploader.upload_stream({ folder, resource_type: 'image' }, (err, result) => {
+    if (err) return reject(err);
+    return resolve(result);
+  });
+  Readable.from(file.buffer).pipe(stream);
+});
 
 app.get('/api/health', (_, res) => res.json({ ok: true, message: 'API running' }));
 
@@ -39,28 +52,89 @@ app.use('/api/settings', settingsRoutes);
 
 app.get('/api/admin/analytics', protect, adminOnly, async (req, res, next) => {
   try {
-    const [users, orders, revenueRow, recentOrders] = await Promise.all([
+    const [
+      totalUsers,
+      totalOrders,
+      orderStats,
+      totalProducts,
+      lowStockCount,
+      latestOrders,
+      latestCustomers,
+      sales,
+    ] = await Promise.all([
       User.countDocuments(),
       Order.countDocuments(),
-      Order.aggregate([{ $group: { _id: null, revenue: { $sum: '$total' } } }]),
-      Order.find().sort({ createdAt: -1 }).limit(5).populate('user', 'name'),
+      Order.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+      Product.countDocuments(),
+      Product.countDocuments({ stock: { $lte: 5 } }),
+      Order.find().sort({ createdAt: -1 }).limit(6).populate('user', 'name email'),
+      User.find().sort({ createdAt: -1 }).limit(6).select('name email createdAt'),
+      Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, value: { $sum: '$total' } } }]),
     ]);
 
+    const byStatus = Object.fromEntries(orderStats.map((item) => [item._id, item.count]));
+
     res.json({
-      totalUsers: users,
-      totalOrders: orders,
-      totalRevenue: revenueRow[0]?.revenue || 0,
-      recentActivity: recentOrders.map((o) => ({ id: o._id, user: o.user?.name || 'User', total: o.total, status: o.status, createdAt: o.createdAt })),
+      totalSales: sales[0]?.value || 0,
+      totalOrders,
+      pendingOrders: byStatus.Pending || 0,
+      dispatchedOrders: byStatus.Dispatched || 0,
+      deliveredOrders: byStatus.Delivered || 0,
+      cancelledOrders: byStatus.Cancelled || 0,
+      totalProducts,
+      lowStockCount,
+      totalUsers,
+      latestOrders,
+      latestCustomers,
     });
   } catch (error) {
     next(error);
   }
 });
 
-app.post('/api/upload', protect, adminOnly, (req, res) => {
-  const { imageUrl } = req.body;
-  if (!imageUrl) return res.status(400).json({ message: 'imageUrl is required (Cloudinary URL or public URL).' });
-  return res.status(201).json({ url: imageUrl });
+app.post('/api/upload/single', protect, adminOnly, upload.single('image'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'Image file is required' });
+    const result = await uploadBufferToCloudinary(req.file, 'ecom');
+    await UploadAsset.create({
+      publicId: result.public_id,
+      url: result.url,
+      secureUrl: result.secure_url,
+      uploadedBy: req.user._id,
+      folder: 'ecom',
+    });
+    res.status(201).json({ url: result.secure_url, publicId: result.public_id });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/upload/multiple', protect, adminOnly, upload.array('images', 8), async (req, res, next) => {
+  try {
+    if (!req.files?.length) return res.status(400).json({ message: 'Images are required' });
+    const uploaded = await Promise.all(req.files.map((file) => uploadBufferToCloudinary(file, 'ecom')));
+    await UploadAsset.insertMany(uploaded.map((item) => ({
+      publicId: item.public_id,
+      url: item.url,
+      secureUrl: item.secure_url,
+      uploadedBy: req.user._id,
+      folder: 'ecom',
+    })));
+
+    res.status(201).json(uploaded.map((item) => ({ url: item.secure_url, publicId: item.public_id })));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/api/upload/:publicId', protect, adminOnly, async (req, res, next) => {
+  try {
+    await cloudinary.uploader.destroy(req.params.publicId);
+    await UploadAsset.deleteOne({ publicId: req.params.publicId });
+    res.json({ message: 'Deleted image' });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.use(notFound);
