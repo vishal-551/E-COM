@@ -1,33 +1,51 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { asyncHandler } from '../utils/error.js';
 
-export const protect = asyncHandler(async (req, res, next) => {
+export const protect = async (req, res, next) => {
   const token = req.headers.authorization?.startsWith('Bearer ')
     ? req.headers.authorization.split(' ')[1]
     : null;
 
   if (!token) {
-    res.status(401);
-    throw new Error('Unauthorized: token missing');
+    return res.status(401).json({ message: 'Unauthorized access.' });
   }
 
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findById(decoded.id).select('-password');
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id || decoded.sub;
+    const user = await User.findById(userId).select('-password');
 
-  if (!user || user.isBlocked) {
-    res.status(401);
-    throw new Error('Unauthorized user');
+    if (!user || user.isBlocked || !user.isActive) {
+      return res.status(401).json({ message: 'Account unavailable.' });
+    }
+
+    req.user = user;
+    return next();
+  } catch {
+    return res.status(401).json({ message: 'Invalid token.' });
   }
-
-  req.user = user;
-  next();
-});
+};
 
 export const adminOnly = (req, res, next) => {
-  if (req.user?.role !== 'admin') {
-    res.status(403);
-    throw new Error('Admin access required');
+  if (!['admin', 'editor'].includes(req.user?.role)) {
+    return res.status(403).json({ message: 'Admin access required' });
   }
-  next();
+  return next();
+};
+
+export const authorizeRoles = (...roles) => (req, res, next) => {
+  if (!roles.includes(req.user?.role)) {
+    return res.status(403).json({ message: 'Forbidden.' });
+  }
+  return next();
+};
+
+export const authorizePermissions = (...permissions) => (req, res, next) => {
+  const userPermissions = req.user?.permissions || [];
+  const hasAll = permissions.every((permission) => userPermissions.includes(permission));
+  if (!hasAll) {
+    return res.status(403).json({ message: 'Missing permission.' });
+  }
+
+  return next();
 };

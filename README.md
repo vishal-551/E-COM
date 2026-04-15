@@ -1,95 +1,162 @@
-# E-COM – Supabase Powered Production E-commerce
+# E-COM
 
-This project now runs as a **single Vite frontend** with Supabase as backend for:
-- Postgres database
-- Auth (customer + admin)
-- Storage (products / banners / categories)
-- RLS and role-based access
+Production-minded full-stack e-commerce monorepo with a clean, single architecture:
 
-## Required environment variables
+- **Frontend:** React + Vite + TailwindCSS
+- **Backend:** Node.js + Express
+- **Database:** MongoDB + Mongoose
+- **Auth:** JWT
+- **Uploads:** Multer (memory storage) + Cloudinary
 
-Create `.env` from `.env.example`:
+> This repository intentionally does **not** use Supabase.
+
+## Project Structure
+
+- `src/` — React storefront + admin frontend
+- `backend/` — Express API, models, routes, middleware, seed script
+- `.env.example` — frontend env template
+- `backend/.env.example` — backend env template
+- `vercel.json` — frontend deployment routing
+- `render.yaml` — backend deployment blueprint for Render
+
+## Environment Files
+
+Create env files from templates:
 
 ```bash
 cp .env.example .env
+cp backend/.env.example backend/.env
 ```
+
+### Frontend `.env`
 
 ```env
-VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
+VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
-## 1) Supabase setup
+### Backend `backend/.env`
 
-1. Create a new Supabase project.
-2. Open SQL editor and run `supabase/migrations/20260414_init_ecom.sql`.
-3. In **Storage**, create buckets:
-   - `products` (public)
-   - `banners` (public)
-   - `categories` (public)
-4. In **Auth > URL Configuration**, set site URL to your Vercel URL and add `http://localhost:5173` in redirect URLs.
+Required in all environments:
 
-## 2) Create first admin user
+- `MONGO_URI`
+- `JWT_SECRET`
+- `CLIENT_URL`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
 
-1. Sign up from `/signup` or Auth dashboard.
-2. In SQL editor run:
+Optional:
 
-```sql
-update public.profiles
-set role = 'admin'
-where email = 'your-admin-email@example.com';
-```
+- `CLIENT_URLS` (comma-separated allowlist for multiple origins)
+- `JWT_EXPIRES_IN` (default `7d`)
+- `SEED_ADMIN_NAME`
+- `SEED_ADMIN_EMAIL`
+- `SEED_ADMIN_PASSWORD`
 
-3. Login from `/admin/login`.
+## Local Setup (Run-Readiness Flow)
 
-## 3) Local run
+1. Install root dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Install backend dependencies:
+
+   ```bash
+   npm run backend:install
+   ```
+
+3. Copy env templates and fill values:
+
+   ```bash
+   cp .env.example .env
+   cp backend/.env.example backend/.env
+   ```
+
+4. Start frontend + backend together:
+
+   ```bash
+   npm run dev:all
+   ```
+
+## Local Preview URLs
+
+- Frontend: `http://localhost:5173`
+- Backend API root: `http://localhost:5000`
+- Backend health route: `http://localhost:5000/api/health`
+
+## NPM Scripts
+
+### Root scripts
+
+- `npm run dev` — start Vite dev server
+- `npm run build` — build frontend
+- `npm run preview` — preview built frontend
+- `npm run backend:install` — install backend dependencies
+- `npm run backend:dev` — run backend in watch mode
+- `npm run backend:start` — run backend in standard mode
+- `npm run backend:seed:admin` — seed admin from backend env values
+- `npm run seed:admin` — alias for backend seed command
+- `npm run dev:all` — run frontend + backend concurrently
+- `npm run install:all` — install root + backend dependencies
+
+### Backend scripts (`backend/package.json`)
+
+- `npm run dev`
+- `npm run start`
+- `npm run seed:admin`
+
+## Admin Seed Behavior
+
+- The backend can auto-seed an admin user at startup when both `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are provided.
+- You can also seed manually with:
 
 ```bash
-npm install
-npm run dev
+npm run seed:admin
 ```
 
-## 4) Vercel deployment
+## API Summary
 
-1. Import repo to Vercel.
-2. Build command: `npm run build`
-3. Output directory: `dist`
-4. Add env vars:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-5. Deploy.
+- `GET /api/health` — health check
+- `POST /api/auth/*` — auth endpoints
+- `GET /api/products` — products
+- `GET /api/categories` — categories
+- `GET /api/banners` — banners
+- `POST /api/contact` — contact form
+- `GET /api/cart` — cart
+- `GET /api/wishlist` — wishlist
+- `POST /api/coupons/apply` — coupon validation
+- `POST /api/orders` — order placement
+- `GET /api/users` — admin user management
+- `GET /api/settings` — site settings
+- `POST /api/upload/single` — admin image upload to Cloudinary
+- `GET /api/admin/analytics` — admin dashboard
 
-## Functional checklist
+## Deployment Summary
 
-- Admin auth with role guard: `/admin/login`, `/admin/*`
-- Customer auth: `/login`, `/signup`, reset-password email flow
-- Product CRUD + category CRUD + image upload to storage
-- Cart/wishlist persisted in DB (not localStorage)
-- Checkout creates orders + order_items + coupon support
-- Admin order status and dispatch detail updates
-- Enquiry submit and admin read/delete
-- Banner and settings CMS
-- Dashboard analytics with real DB counts/sales
+### Frontend (Vercel)
 
-## Important routes
+- Framework preset: **Vite**
+- Build command: `npm run build`
+- Output directory: `dist`
+- Env var:
+  - `VITE_API_BASE_URL=https://<your-backend-domain>/api`
 
-Customer:
-- `/`
-- `/login`
-- `/signup`
-- `/profile`
-- `/cart`
-- `/checkout`
-- `/orders`
+### Backend (Render / Railway / VPS)
 
-Admin:
-- `/admin/login`
-- `/admin`
-- `/admin/products`
-- `/admin/orders`
-- `/admin/users`
-- `/admin/banners`
-- `/admin/enquiries`
-- `/admin/coupons`
-- `/admin/settings`
-- `/admin/categories`
+- Service root: `backend`
+- Build command: `npm install`
+- Start command: `npm run start`
+- Health check path: `/api/health`
+- Set backend env vars from `backend/.env.example`
+
+### Custom Domain
+
+- Point frontend domain/subdomain to Vercel project
+- Point API domain/subdomain to backend host (Render/Railway/VPS)
+- Update CORS in backend env:
+  - `CLIENT_URL=https://<your-frontend-domain>`
+  - optionally `CLIENT_URLS` for multiple domains
+- Update frontend env:
+  - `VITE_API_BASE_URL=https://<your-api-domain>/api`

@@ -10,7 +10,8 @@ router.get('/', protect, adminOnly, asyncHandler(async (req, res) => {
   const { q = '' } = req.query;
   const filter = q ? {
     $or: [
-      { name: { $regex: q, $options: 'i' } },
+      { firstName: { $regex: q, $options: 'i' } },
+      { lastName: { $regex: q, $options: 'i' } },
       { email: { $regex: q, $options: 'i' } },
     ],
   } : {};
@@ -21,7 +22,11 @@ router.get('/', protect, adminOnly, asyncHandler(async (req, res) => {
   ]);
   const countMap = Object.fromEntries(orderCounts.map((i) => [String(i._id), i.count]));
 
-  res.json(users.map((u) => ({ ...u.toObject(), orderCount: countMap[String(u._id)] || 0 })));
+  res.json(users.map((u) => ({
+    ...u.toObject(),
+    name: `${u.firstName} ${u.lastName}`.trim(),
+    orderCount: countMap[String(u._id)] || 0,
+  })));
 }));
 
 router.patch('/:id/block', protect, adminOnly, asyncHandler(async (req, res) => {

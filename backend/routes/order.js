@@ -1,12 +1,22 @@
 import express from 'express';
 import Order from '../models/Order.js';
+import CartItem from '../models/CartItem.js';
 import { adminOnly, protect } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/error.js';
 
 const router = express.Router();
 
 router.post('/', protect, asyncHandler(async (req, res) => {
-  const data = await Order.create({ ...req.body, user: req.user._id });
+  const payload = {
+    ...req.body,
+    user: req.user._id,
+    items: req.body.items || [],
+    subtotal: req.body.subtotal || req.body.total,
+    discountAmount: req.body.discountAmount || 0,
+    shippingAmount: req.body.shippingAmount || 0,
+  };
+  const data = await Order.create(payload);
+  await CartItem.deleteMany({ user: req.user._id });
   res.status(201).json(data);
 }));
 
@@ -25,9 +35,15 @@ router.get('/', protect, adminOnly, asyncHandler(async (req, res) => {
   if (q) filter._id = { $regex: q, $options: 'i' };
 
   const orders = await Order.find(filter)
-    .populate('user', 'name email phone createdAt')
+    .populate('user', 'firstName lastName email phone createdAt')
     .sort({ createdAt: -1 });
-  res.json(orders);
+  res.json(orders.map((order) => {
+    const data = order.toObject();
+    if (data.user) {
+      data.user.name = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim();
+    }
+    return data;
+  }));
 }));
 
 router.patch('/:id/status', protect, adminOnly, asyncHandler(async (req, res) => {
