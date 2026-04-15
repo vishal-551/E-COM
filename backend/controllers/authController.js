@@ -1,37 +1,14 @@
-import Admin from '../models/Admin.js';
-import { signToken } from '../utils/token.js';
-import { asyncHandler } from '../utils/error.js';
-
-const adminDto = (admin) => ({
-  id: admin._id,
-  name: admin.name,
-  email: admin.email,
-  role: admin.role,
-});
-
-export const adminLogin = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    res.status(400);
-    throw new Error('Email and password are required');
-  }
-
-  const admin = await Admin.findOne({ email });
-  if (!admin || !admin.isActive || !(await admin.comparePassword(password))) {
-    res.status(401);
-    throw new Error('Invalid credentials');
-  }
-
-  const token = signToken({ id: admin._id, role: admin.role });
-  res.json({ token, admin: adminDto(admin) });
 import crypto from 'crypto';
 import User from '../models/User.js';
 import PasswordResetToken from '../models/PasswordResetToken.js';
 import { signToken } from '../utils/token.js';
 import { asyncHandler } from '../utils/error.js';
 
+const normalizeName = (firstName = '', lastName = '') => `${firstName} ${lastName}`.trim();
+
 const userResponse = (user) => ({
   id: user._id,
+  name: normalizeName(user.firstName, user.lastName),
   firstName: user.firstName,
   lastName: user.lastName,
   email: user.email,
@@ -40,68 +17,87 @@ const userResponse = (user) => ({
   isBlocked: user.isBlocked,
   isActive: user.isActive,
   subscription: user.subscription,
-  createdAt: user.createdAt
+  createdAt: user.createdAt,
 });
 
 export const signup = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password } = req.body;
+  const {
+    firstName,
+    lastName,
+    name,
+    email,
+    password,
+  } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
+  }
 
   const exists = await User.findOne({ email });
-  if (exists) throw new AppError('Email already registered.', 409);
+  if (exists) return res.status(409).json({ message: 'Email already registered.' });
 
-  const user = await User.create({ firstName, lastName, email, password });
-  const token = signToken(user);
+  const [fallbackFirstName, ...rest] = String(name || '').trim().split(' ').filter(Boolean);
 
-  await Notification.create({
-    user: user._id,
-    title: 'Welcome aboard',
-    message: 'Your account is active and ready to use.',
-    type: 'success'
+  const user = await User.create({
+    firstName: firstName || fallbackFirstName || 'User',
+    lastName: lastName || rest.join(' ') || 'Account',
+    email,
+    password,
   });
 
-  await logActivity({
-    actor: user._id,
-    action: 'user_created',
-    entityType: 'User',
-    entityId: String(user._id),
-    ip: req.ip
-  });
-
+  const token = signToken({ sub: user._id, role: user.role });
   res.status(201).json({ token, user: userResponse(user) });
 });
 
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findOne({ email }).select('+password');
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
+  }
 
-  if (!user) throw new AppError('Invalid credentials.', 401);
+  const user = await User.findOne({ email }).select('+password');
+  if (!user) return res.status(401).json({ message: 'Invalid credentials.' });
 
   const isValid = await user.comparePassword(password);
-  if (!isValid) throw new AppError('Invalid credentials.', 401);
-  if (user.isBlocked || !user.isActive) throw new AppError('Account unavailable.', 403);
+  if (!isValid) return res.status(401).json({ message: 'Invalid credentials.' });
+  if (user.isBlocked || !user.isActive) return res.status(403).json({ message: 'Account unavailable.' });
 
   user.lastLoginAt = new Date();
   await user.save();
 
-  const token = signToken(user);
-
-  await logActivity({
-    actor: user._id,
-    action: 'user_logged_in',
-    entityType: 'Auth',
-    entityId: String(user._id),
-    ip: req.ip
-  });
-
+  const token = signToken({ sub: user._id, role: user.role });
   res.json({ token, user: userResponse(user) });
+});
+
+export const profile = asyncHandler(async (req, res) => {
+  res.json({ user: userResponse(req.user) });
+});
+
+export const adminLogin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email }).select('+password');
+
+  if (!user || !['admin', 'editor'].includes(user.role) || !(await user.comparePassword(password))) {
+    return res.status(401).json({ message: 'Invalid admin credentials' });
+  }
+
+  const token = signToken({ sub: user._id, role: user.role });
+  res.json({ token, admin: userResponse(user) });
+});
+
+export const adminProfile = asyncHandler(async (req, res) => {
+  if (!['admin', 'editor'].includes(req.user?.role)) {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  res.json({ admin: userResponse(req.user) });
 });
 
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
-    res.status(400);
-    throw new Error('Email is required');
+    return res.status(400).json({ message: 'Email is required' });
   }
+
   const user = await User.findOne({ email });
   if (!user) return res.json({ message: 'If the email exists, reset instructions were generated.' });
 
@@ -121,24 +117,18 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 export const resetPassword = asyncHandler(async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) {
-    res.status(400);
-    throw new Error('token and password are required');
+    return res.status(400).json({ message: 'token and password are required' });
   }
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const record = await PasswordResetToken.findOne({ tokenHash, expiresAt: { $gt: new Date() } });
   if (!record) {
-    res.status(400);
-    throw new Error('Invalid or expired reset token');
+    return res.status(400).json({ message: 'Invalid or expired reset token' });
   }
 
-  const user = await User.findById(record.user);
+  const user = await User.findById(record.user).select('+password');
   user.password = password;
   await user.save();
   await PasswordResetToken.deleteMany({ user: user._id });
 
   res.json({ message: 'Password reset successful' });
-});
-
-export const adminProfile = asyncHandler(async (req, res) => {
-  res.json({ admin: adminDto(req.user) });
 });
