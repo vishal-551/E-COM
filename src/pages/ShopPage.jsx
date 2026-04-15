@@ -12,7 +12,11 @@ export default function ShopPage({ preset }) {
   const list = useMemo(() => {
     let out = products.filter((p) => {
       const categoryName = p.category || '';
-      return (category === 'All' || categoryName === category) && (!preset || preset(p))
+      const normalizedCategory = category.toLowerCase();
+      const categoryMatches = category === 'All'
+        || categoryName.toLowerCase() === normalizedCategory
+        || categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-') === normalizedCategory;
+      return categoryMatches && (!preset || preset(p))
       && `${p.name} ${categoryName} ${p.brand || ''}`.toLowerCase().includes(q.toLowerCase());
     });
     if (sort === 'low') out = [...out].sort((a, b) => Number(a.salePrice || a.price) - Number(b.salePrice || b.price));

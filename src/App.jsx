@@ -13,6 +13,7 @@ import {
   LoginPage,
   MyOrdersPage,
   NotFoundPage,
+  OrderSuccessPage,
   PolicyPage,
   SignupPage,
   TrackingPage,
@@ -47,6 +48,7 @@ export default function App() {
       <Route path="/wishlist" element={<Layout><WishlistPage /></Layout>} />
       <Route path="/cart" element={<Layout><CartPage /></Layout>} />
       <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
+      <Route path="/order-success/:orderId" element={<Layout><OrderSuccessPage /></Layout>} />
       <Route path="/orders" element={<Layout><MyOrdersPage /></Layout>} />
       <Route path="/tracking" element={<Layout><TrackingPage /></Layout>} />
       <Route path="/profile" element={<Layout><AccountPage /></Layout>} />
