@@ -83,13 +83,20 @@ Optional:
    cp backend/.env.example backend/.env
    ```
 
-4. Run frontend + backend together:
+4. Start MongoDB locally (or use Atlas):
+
+   ```bash
+   # Example for local MongoDB service names (use the one your OS provides)
+   sudo systemctl start mongod || sudo systemctl start mongodb
+   ```
+
+5. Run frontend + backend together:
 
    ```bash
    npm run dev:all
    ```
 
-5. Verify backend health + CORS:
+6. Verify backend health + CORS:
 
    ```bash
    curl http://localhost:5000/api/health
@@ -97,6 +104,8 @@ Optional:
    ```
 
    The second command should return `Access-Control-Allow-Origin: http://localhost:5173` when `CLIENT_URL`/`CLIENT_URLS` is configured correctly.
+
+If `/api/health` returns `503`, start MongoDB or switch `MONGO_URI` to Atlas, then wait for reconnect.
 
 Local URLs:
 

@@ -160,33 +160,44 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 const mongoUri = process.env.MONGO_URI;
 
-connectDB()
-  .then(async () => {
-    if (process.env.SEED_ADMIN_EMAIL && process.env.SEED_ADMIN_PASSWORD) {
-      const existing = await User.findOne({ email: process.env.SEED_ADMIN_EMAIL });
-      if (!existing) {
-        const [firstName, ...rest] = (process.env.SEED_ADMIN_NAME || 'Super Admin').split(' ');
-        await User.create({
-          firstName,
-          lastName: rest.join(' ') || 'User',
-          email: process.env.SEED_ADMIN_EMAIL,
-          password: process.env.SEED_ADMIN_PASSWORD,
-          role: 'admin',
-        });
-        console.log('Admin seeded');
-      }
-    }
+const seedAdminIfConfigured = async () => {
+  if (!process.env.SEED_ADMIN_EMAIL || !process.env.SEED_ADMIN_PASSWORD) return;
 
-    app.listen(PORT, () => {
-      console.log(`✅ API listening on port ${PORT}`);
-      console.log(`🌐 Allowed CORS origins: ${allowedOrigins.join(', ')}`);
-      if (mongoUri) {
-        console.log(`🗄️ Mongo target: ${redactMongoUri(mongoUri)}`);
-      }
-    });
-  })
-  .catch((error) => {
-    console.error('❌ Server startup failed.');
-    console.error(error);
-    process.exit(1);
+  const existing = await User.findOne({ email: process.env.SEED_ADMIN_EMAIL });
+  if (existing) return;
+
+  const [firstName, ...rest] = (process.env.SEED_ADMIN_NAME || 'Super Admin').split(' ');
+  await User.create({
+    firstName,
+    lastName: rest.join(' ') || 'User',
+    email: process.env.SEED_ADMIN_EMAIL,
+    password: process.env.SEED_ADMIN_PASSWORD,
+    role: 'admin',
   });
+  console.log('Admin seeded');
+};
+
+let hasSeededAdmin = false;
+const connectWithRetry = async () => {
+  try {
+    await connectDB();
+    if (!hasSeededAdmin) {
+      await seedAdminIfConfigured();
+      hasSeededAdmin = true;
+    }
+  } catch (error) {
+    console.error('❌ MongoDB connection failed. Retrying in 5 seconds.');
+    console.error(error?.message || error);
+    setTimeout(connectWithRetry, 5000);
+  }
+};
+
+app.listen(PORT, () => {
+  console.log(`✅ API listening on port ${PORT}`);
+  console.log(`🌐 Allowed CORS origins: ${allowedOrigins.join(', ')}`);
+  if (mongoUri) {
+    console.log(`🗄️ Mongo target: ${redactMongoUri(mongoUri)}`);
+  }
+});
+
+connectWithRetry();
