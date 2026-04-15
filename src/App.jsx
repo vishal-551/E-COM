@@ -26,6 +26,7 @@ import {
   AdminDashboard,
   AdminEnquiries,
   AdminLoginPage,
+  AdminMedia,
   AdminLogoutButton,
   AdminOrders,
   AdminProducts,
@@ -48,6 +49,7 @@ export default function App() {
       <Route path="/wishlist" element={<Layout><WishlistPage /></Layout>} />
       <Route path="/cart" element={<Layout><CartPage /></Layout>} />
       <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
+      <Route path="/order-success" element={<Layout><OrderSuccessPage /></Layout>} />
       <Route path="/order-success/:orderId" element={<Layout><OrderSuccessPage /></Layout>} />
       <Route path="/orders" element={<Layout><MyOrdersPage /></Layout>} />
       <Route path="/tracking" element={<Layout><TrackingPage /></Layout>} />
@@ -57,7 +59,7 @@ export default function App() {
       <Route path="/about" element={<Layout><AboutPage /></Layout>} />
       <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
       <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
-      <Route path="/policy/:slug" element={<Layout><PolicyPage title="Policy" /></Layout>} />
+      <Route path="/policy/:slug" element={<Layout><PolicyPage /></Layout>} />
 
       <Route path="/admin/login" element={<Layout><AdminLoginPage /></Layout>} />
       <Route path="/admin" element={<ProtectedAdmin><Layout><div className="flex justify-between items-center"><AdminDashboard /><AdminLogoutButton /></div></Layout></ProtectedAdmin>} />
@@ -69,6 +71,7 @@ export default function App() {
       <Route path="/admin/coupons" element={<ProtectedAdmin><Layout><AdminCoupons /></Layout></ProtectedAdmin>} />
       <Route path="/admin/enquiries" element={<ProtectedAdmin><Layout><AdminEnquiries /></Layout></ProtectedAdmin>} />
       <Route path="/admin/settings" element={<ProtectedAdmin><Layout><AdminSettings /></Layout></ProtectedAdmin>} />
+      <Route path="/admin/media" element={<ProtectedAdmin><Layout><AdminMedia /></Layout></ProtectedAdmin>} />
 
       <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
     </Routes>

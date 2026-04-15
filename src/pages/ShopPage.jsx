@@ -10,8 +10,14 @@ export default function ShopPage({ preset }) {
   const [category, setCategory] = useState(params.get('category') || 'All');
   const [sort, setSort] = useState('latest');
   const list = useMemo(() => {
+    const selectedCategory = categories.find((c) => (c.slug || c.name) === category);
+    const selectedCategoryName = selectedCategory?.name;
     let out = products.filter((p) => {
       const categoryName = p.category || '';
+      const categoryMatched = category === 'All'
+        || categoryName === category
+        || (selectedCategoryName && categoryName === selectedCategoryName);
+      return categoryMatched && (!preset || preset(p))
       const normalizedCategory = category.toLowerCase();
       const categoryMatches = category === 'All'
         || categoryName.toLowerCase() === normalizedCategory
@@ -22,14 +28,14 @@ export default function ShopPage({ preset }) {
     if (sort === 'low') out = [...out].sort((a, b) => Number(a.salePrice || a.price) - Number(b.salePrice || b.price));
     if (sort === 'high') out = [...out].sort((a, b) => Number(b.salePrice || b.price) - Number(a.salePrice || a.price));
     return out;
-  }, [products, category, q, sort, preset]);
+  }, [products, categories, category, q, sort, preset]);
 
   return (
     <div className="py-8 space-y-5">
       <h1 className="section-title">Shop All Products</h1>
       <div className="premium-card p-4 grid md:grid-cols-4 gap-3">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, category, brand" className="border rounded-lg px-3 py-2" />
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className="border rounded-lg px-3 py-2"><option>All</option>{categories.map((c) => <option key={c._id}>{c.name}</option>)}</select>
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className="border rounded-lg px-3 py-2"><option>All</option>{categories.map((c) => <option key={c._id} value={c.slug || c.name}>{c.name}</option>)}</select>
         <select value={sort} onChange={(e) => setSort(e.target.value)} className="border rounded-lg px-3 py-2"><option value="latest">Latest</option><option value="low">Price low to high</option><option value="high">Price high to low</option></select>
         <div className="text-sm flex items-center">{list.length} products</div>
       </div>

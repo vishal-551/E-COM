@@ -8,6 +8,10 @@ const siteSettingsSchema = new mongoose.Schema({
   promoText: { type: String, default: '' },
   supportEmail: { type: String, default: '' },
   supportPhone: { type: String, default: '' },
+  privacyPolicy: { type: String, default: '' },
+  termsOfService: { type: String, default: '' },
+  shippingPolicy: { type: String, default: '' },
+  refundPolicy: { type: String, default: '' },
   socialLinks: {
     instagram: { type: String, default: '' },
     facebook: { type: String, default: '' },

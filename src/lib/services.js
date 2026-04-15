@@ -25,6 +25,11 @@ export const authService = {
     setAuthToken(data.token);
     return data;
   },
+  async adminSignIn(payload) {
+    const { data } = await api.post('/auth/admin/login', payload);
+    setAuthToken(data.token);
+    return data;
+  },
   async profile() {
     const { data } = await api.get('/auth/profile');
     return data.user;
@@ -66,8 +71,10 @@ export const adminService = {
   listOrders: async () => (await api.get('/orders')).data,
   updateOrderStatus: async (id, payload) => (await api.patch(`/orders/${id}/status`, payload)).data,
   listUsers: async () => (await api.get('/users')).data,
+  toggleUserBlock: async (id, isBlocked) => (await api.patch(`/users/${id}/block`, { isBlocked })).data,
   listBanners: async () => (await api.get('/banners')).data,
   createBanner: async (payload) => (await api.post('/banners', payload)).data,
+  updateBanner: async (id, payload) => (await api.put(`/banners/${id}`, payload)).data,
   deleteBanner: async (id) => (await api.delete(`/banners/${id}`)).data,
   listEnquiries: async () => (await api.get('/contact')).data,
   markEnquiry: async (id, isRead) => (await api.patch(`/contact/${id}/read`, { isRead })).data,
@@ -80,10 +87,13 @@ export const adminService = {
   saveSettings: async (payload) => (await api.put('/settings', payload)).data,
   listCategories: async () => (await api.get('/categories')).data,
   createCategory: async (payload) => (await api.post('/categories', payload)).data,
+  updateCategory: async (id, payload) => (await api.put(`/categories/${id}`, payload)).data,
   deleteCategory: async (id) => (await api.delete(`/categories/${id}`)).data,
   uploadSingle: async (file) => {
     const fd = new FormData();
     fd.append('image', file);
     return (await api.post('/upload/single', fd, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
   },
+  listMedia: async () => (await api.get('/upload')).data,
+  deleteMedia: async (publicId) => (await api.delete(`/upload/${encodeURIComponent(publicId)}`)).data,
 };

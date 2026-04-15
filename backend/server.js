@@ -27,7 +27,7 @@ dotenv.config();
 
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_URL || '')
+const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -114,6 +114,15 @@ app.post('/api/upload/single', protect, adminOnly, upload.single('image'), async
     return res.status(201).json({ url: result.secure_url, publicId: result.public_id });
   } catch (error) {
     return next(error);
+  }
+});
+
+app.get('/api/upload', protect, adminOnly, async (req, res, next) => {
+  try {
+    const assets = await UploadAsset.find().sort({ createdAt: -1 }).limit(200);
+    res.json(assets);
+  } catch (error) {
+    next(error);
   }
 });
 
