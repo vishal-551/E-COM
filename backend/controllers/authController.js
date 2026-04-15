@@ -107,8 +107,14 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
   await PasswordResetToken.create({ user: user._id, tokenHash, expiresAt });
 
-  res.json({
-    message: 'Password reset token generated. Integrate with your mail provider in production.',
+  if (process.env.NODE_ENV === 'production') {
+    return res.json({
+      message: 'If the email exists, reset instructions were generated.',
+    });
+  }
+
+  return res.json({
+    message: 'Password reset token generated for development/testing.',
     resetToken: rawToken,
     expiresAt,
   });
