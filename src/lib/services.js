@@ -8,12 +8,6 @@ export const setAuthToken = (token) => {
 };
 export const getAuthToken = () => getAdminToken();
 
-api.interceptors.request.use((config) => {
-  const token = getAuthToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
 export const authService = {
   async signUp(payload) {
     const { data } = await api.post('/auth/signup', payload);
