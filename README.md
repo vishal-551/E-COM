@@ -89,11 +89,14 @@ Optional:
    npm run dev:all
    ```
 
-5. Verify backend health:
+5. Verify backend health + CORS:
 
    ```bash
    curl http://localhost:5000/api/health
+   curl -i -H "Origin: http://localhost:5173" http://localhost:5000/api/health
    ```
+
+   The second command should return `Access-Control-Allow-Origin: http://localhost:5173` when `CLIENT_URL`/`CLIENT_URLS` is configured correctly.
 
 Local URLs:
 
@@ -226,12 +229,14 @@ Root scripts:
 
 - `npm run dev` — frontend dev
 - `npm run build` — frontend build
-- `npm run preview` — frontend preview
-- `npm run dev:all` — frontend + backend dev
-- `npm run backend:install`
-- `npm run backend:dev`
-- `npm run backend:start`
-- `npm run seed:admin`
+- `npm run preview` — frontend preview build
+- `npm run start` — backend production start (from root wrapper)
+- `npm run dev:all` — frontend + backend dev in one terminal
+- `npm run backend:install` — install backend dependencies
+- `npm run backend:dev` — backend dev mode (`node --watch`)
+- `npm run backend:start` — backend production mode
+- `npm run seed:admin` — run admin seed script
+- `npm run install:all` — install frontend and backend dependencies
 
 Backend scripts:
 
