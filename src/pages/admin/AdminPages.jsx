@@ -17,9 +17,9 @@ export const AdminLoginPage = () => {
       setLoading(true);
       setError('');
       const data = await authService.adminSignIn({ email, password });
-      if (!['admin', 'editor'].includes(data.admin?.role || data.user?.role)) throw new Error('Admin access required');
-      const data = await authService.signIn({ email, password });
-      if (!['admin', 'editor'].includes(data.user?.role)) throw new Error('Admin access required');
+      if (!['admin', 'editor'].includes(data.admin?.role || data.user?.role)) {
+        throw new Error('Admin access required');
+      }
       navigate('/admin', { replace: true });
       window.location.reload();
     } catch (e) {
@@ -86,10 +86,12 @@ export const AdminBanners = () => {
   return <div className="py-8"><h1 className="section-title mb-3">Banners / Media</h1><div className={card}><div className="grid md:grid-cols-5 gap-2">{['title', 'subtitle', 'cta', 'link'].map((k) => <input key={k} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} placeholder={k} className="border p-2 rounded bg-black/20" />)}<input type="file" accept="image/*" onChange={async (e) => { const up = await adminService.uploadSingle(e.target.files?.[0]); setForm({ ...form, image: up }); }} className="border p-2 rounded bg-black/20"/></div><button onClick={onSave} className="mt-2 bg-charcoal text-white px-3 py-2 rounded">{editingId ? 'Update' : 'Create'} banner</button></div><div className="mt-3 space-y-2">{rows.map((b) => <div key={b._id} className={`${card} flex justify-between items-center`}><div className="flex items-center gap-2"><img src={b.image?.url} className="h-12 w-20 object-cover rounded"/><span>{b.title}</span></div><div className="space-x-2"><button onClick={() => { setEditingId(b._id); setForm(b); }} className="text-cyan-200">Edit</button><button onClick={async () => { await adminService.deleteBanner(b._id); load(); }} className="text-red-300">Delete</button></div></div>)}</div></div>;
 };
 
-export const AdminOrders = () => { const [orders, setOrders] = useState([]); useEffect(() => { adminService.listOrders().then(setOrders); }, []); return <div className="py-8 space-y-3"><h1 className="section-title">Orders</h1>{orders.map((o) => <div key={o._id} className={card}><div className="flex justify-between"><div><p>#{o._id}</p><p className="text-xs">{[o.user?.firstName, o.user?.lastName].filter(Boolean).join(' ') || 'Unknown User'} • {o.paymentMethod} • ₹{o.total}</p></div><select value={o.status} onChange={async (e) => { await adminService.updateOrderStatus(o._id, { status: e.target.value }); setOrders(await adminService.listOrders()); }} className="border p-2 rounded bg-black/20">{statusList.map((s) => <option key={s}>{s}</option>)}</select></div></div>)}</div>; };
-export const AdminUsers = () => { const [users, setUsers] = useState([]); useEffect(() => { adminService.listUsers().then(setUsers); }, []); return <div className="py-8"><h1 className="section-title mb-3">Users</h1><div className={card}>{users.map((u) => <div key={u._id} className="border-b border-white/10 py-2 text-sm">{[u.firstName, u.lastName].filter(Boolean).join(' ')} • {u.email} • {u.role}</div>)}</div></div>; };
-export const AdminBanners = () => { const [rows, setRows] = useState([]); const [form, setForm] = useState({ title: '', subtitle: '', cta: 'Shop Now', link: '/shop', order: 0, active: true, image: null }); const load = async () => setRows(await adminService.listBanners()); useEffect(() => { load(); }, []); return <div className="py-8"><h1 className="section-title mb-3">Banners</h1><div className={card}><div className="grid md:grid-cols-5 gap-2">{['title', 'subtitle', 'cta', 'link'].map((k) => <input key={k} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} placeholder={k} className="border p-2 rounded bg-black/20" />)}<input type="file" accept="image/*" onChange={async (e) => { const up = await adminService.uploadSingle(e.target.files?.[0]); setForm({ ...form, image: up }); }} className="border p-2 rounded bg-black/20"/></div><button onClick={async () => { await adminService.createBanner(form); load(); }} className="mt-2 bg-charcoal text-white px-3 py-2 rounded">Create banner</button></div><div className="mt-3 space-y-2">{rows.map((b) => <div key={b._id} className={`${card} flex justify-between items-center`}><div className="flex items-center gap-2"><img src={b.image?.url} className="h-12 w-20 object-cover rounded"/><span>{b.title}</span></div><button onClick={async () => { await adminService.deleteBanner(b._id); load(); }} className="text-red-300">Delete</button></div>)}</div></div>; };
-export const AdminEnquiries = () => { const [rows, setRows] = useState([]); const load = async () => setRows(await adminService.listEnquiries()); useEffect(() => { load(); }, []); return <div className="py-8"><h1 className="section-title mb-3">Enquiries</h1><div className={card}>{rows.map((e) => <div key={e._id} className="flex justify-between border-b border-white/10 py-2"><span>{e.name} • {e.email} • {e.subject}</span><div className="space-x-2"><button onClick={async () => { await adminService.markEnquiry(e._id, !e.isRead); load(); }} className="text-cyan-200">Mark {e.isRead ? 'Unread' : 'Read'}</button><button onClick={async () => { await adminService.deleteEnquiry(e._id); load(); }} className="text-red-300">Delete</button></div></div>)}</div></div>; };
+export const AdminEnquiries = () => {
+  const [rows, setRows] = useState([]);
+  const load = async () => setRows(await adminService.listEnquiries());
+  useEffect(() => { load(); }, []);
+  return <div className="py-8"><h1 className="section-title mb-3">Enquiries</h1><div className={card}>{rows.map((e) => <div key={e._id} className="flex justify-between border-b border-white/10 py-2"><span>{e.name} • {e.email} • {e.subject}</span><div className="space-x-2"><button onClick={async () => { await adminService.markEnquiry(e._id, !e.isRead); load(); }} className="text-cyan-200">Mark {e.isRead ? 'Unread' : 'Read'}</button><button onClick={async () => { await adminService.deleteEnquiry(e._id); load(); }} className="text-red-300">Delete</button></div></div>)}</div></div>;
+};
 
 export const AdminCoupons = () => {
   const [rows, setRows] = useState([]);
@@ -111,7 +113,11 @@ export const AdminCoupons = () => {
   return <div className="py-8"><h1 className="section-title mb-3">Coupons</h1><div className={card}><div className="grid md:grid-cols-6 gap-2"><input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Code" className="border p-2 rounded bg-black/20"/><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="border p-2 rounded bg-black/20"><option value="percentage">Percentage</option><option value="fixed">Fixed</option></select><input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: Number(e.target.value) })} placeholder="Value" className="border p-2 rounded bg-black/20"/><input type="number" value={form.minOrderAmount} onChange={(e) => setForm({ ...form, minOrderAmount: Number(e.target.value) })} placeholder="Min order" className="border p-2 rounded bg-black/20"/><input type="date" value={form.expiry ? String(form.expiry).slice(0, 10) : ''} onChange={(e) => setForm({ ...form, expiry: e.target.value })} className="border p-2 rounded bg-black/20"/><button onClick={save} className="bg-charcoal text-white rounded">{editingId ? 'Update' : 'Create'}</button></div></div><div className="mt-2">{rows.map((c) => <div key={c._id} className={`${card} flex justify-between mb-2`}><span>{c.code} • {c.type} • {c.value}</span><div className="space-x-2"><button className="text-cyan-200" onClick={() => { setEditingId(c._id); setForm({ ...c, expiry: c.expiry || '' }); }}>Edit</button><button className="text-red-300" onClick={async () => { await adminService.deleteCoupon(c._id); load(); }}>Delete</button></div></div>)}</div></div>;
 };
 
-export const AdminSettings = () => { const [form, setForm] = useState({}); useEffect(() => { adminService.getSettings().then(setForm); }, []); return <div className="py-8"><h1 className="section-title mb-3">Settings & Content</h1><div className={`${card} grid md:grid-cols-2 gap-2`}>{['storeName', 'homeText', 'aboutText', 'footerText', 'supportEmail', 'supportPhone', 'privacyPolicy', 'termsOfService', 'shippingPolicy', 'refundPolicy'].map((k) => <textarea key={k} value={form[k] || ''} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className="border p-2 rounded bg-black/20" placeholder={k} rows={k.includes('Policy') ? 4 : 1} />)}<button onClick={async () => { await adminService.saveSettings(form); window.alert('Saved'); }} className="md:col-span-2 bg-charcoal text-white py-2 rounded">Save</button></div></div>; };
+export const AdminSettings = () => {
+  const [form, setForm] = useState({});
+  useEffect(() => { adminService.getSettings().then(setForm); }, []);
+  return <div className="py-8"><h1 className="section-title mb-3">Settings & Content</h1><div className={`${card} grid md:grid-cols-2 gap-2`}>{['storeName', 'homeText', 'aboutText', 'footerText', 'supportEmail', 'supportPhone', 'privacyPolicy', 'termsOfService', 'shippingPolicy', 'refundPolicy'].map((k) => <textarea key={k} value={form[k] || ''} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className="border p-2 rounded bg-black/20" placeholder={k} rows={k.includes('Policy') ? 4 : 1} />)}<button onClick={async () => { await adminService.saveSettings(form); window.alert('Saved'); }} className="md:col-span-2 bg-charcoal text-white py-2 rounded">Save</button></div></div>;
+};
 
 export const AdminCategories = () => {
   const [rows, setRows] = useState([]);
@@ -135,7 +141,10 @@ export const AdminCategories = () => {
 
 export const AdminReviews = () => <div className="py-8"><div className={card}>Reviews API endpoint available for extension.</div></div>;
 
-export const AdminLogoutButton = () => { const navigate = useNavigate(); return <button onClick={() => { authService.signOut(); navigate('/admin/login'); window.location.reload(); }} className="bg-rose-700 text-white px-3 py-1 rounded">Logout</button>; };
+export const AdminLogoutButton = () => {
+  const navigate = useNavigate();
+  return <button onClick={() => { authService.signOut(); navigate('/admin/login'); window.location.reload(); }} className="bg-rose-700 text-white px-3 py-1 rounded">Logout</button>;
+};
 
 export const AdminMedia = () => {
   const [assets, setAssets] = useState([]);

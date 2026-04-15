@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useStore } from '../context/StoreContext';
 import { authService, storeService } from '../lib/services';
@@ -52,23 +51,25 @@ export function CheckoutPage() {
       total,
     });
     await loadPrivateData();
-    nav('/order-success', { state: { orderId: order._id } });
     nav(`/order-success/${order._id}`);
   };
+
   return <div className="py-8 grid lg:grid-cols-3 gap-4"><form onSubmit={onSubmit} className="lg:col-span-2 premium-card p-4 grid md:grid-cols-2 gap-3">{Object.entries(form).map(([k, v]) => k !== 'payment' && <input key={k} required value={v} onChange={(e) => setForm({ ...form, [k]: e.target.value })} placeholder={k} className="border rounded p-2"/>)}<select value={form.payment} onChange={(e) => setForm({ ...form, payment: e.target.value })} className="border rounded p-2 md:col-span-2"><option>COD</option><option>UPI</option><option>Card</option></select><button className="bg-charcoal text-white py-2 rounded md:col-span-2">Place Order</button></form><aside className="premium-card p-4"><h3 className="font-semibold">Order Summary</h3><p className="text-sm">Items: {cart.length}</p><p>Subtotal: ₹{subtotal}</p><div className="mt-2 flex gap-2"><input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="Coupon" className="border rounded p-2 flex-1"/><button type="button" onClick={onApplyCoupon} className="px-3 rounded bg-charcoal text-white">Apply</button></div><p>Discount: ₹{couponDiscount}</p><p className="font-semibold mt-2">Total ₹{total}</p></aside></div>;
 }
 
 export function OrderSuccessPage() {
   const { orderId } = useParams();
+  const location = useLocation();
+  const fallbackOrderId = location.state?.orderId;
   return (
     <div className="py-10 max-w-2xl mx-auto">
       <div className="premium-card p-8 text-center space-y-3">
-        <h1 className="section-title">Order placed successfully 🎉</h1>
-        <p>Your order id is <span className="font-semibold">{orderId}</span>.</p>
-        <p className="text-sm text-gray-600">You can track status and history from your orders page.</p>
-        <div className="flex items-center justify-center gap-3 pt-2">
-          <Link to="/orders" className="bg-charcoal text-white px-4 py-2 rounded">View My Orders</Link>
-          <Link to="/shop" className="border border-charcoal px-4 py-2 rounded">Continue Shopping</Link>
+        <h1 className="section-title">Order placed successfully</h1>
+        <p>Thank you for your purchase. Your order is now saved in your account history.</p>
+        {(orderId || fallbackOrderId) && <p className="text-sm text-slate-600">Order ID: {orderId || fallbackOrderId}</p>}
+        <div className="flex justify-center gap-3 pt-2">
+          <Link to="/orders" className="bg-charcoal text-white px-5 py-2 rounded">View Orders</Link>
+          <Link to="/shop" className="border px-5 py-2 rounded">Continue Shopping</Link>
         </div>
       </div>
     </div>
@@ -81,24 +82,6 @@ export const AboutPage = () => <div className="py-8 space-y-3"><h1 className="se
 export const FAQPage = () => <div className="py-8"><h1 className="section-title mb-4">FAQ</h1></div>;
 export const AccountPage = () => { const { user } = useStore(); return <div className="py-8"><h1 className="section-title">My Profile</h1><p className="mt-2">Name: {user?.name || 'Guest'} • Email: {user?.email || 'Not logged in'}</p></div>; };
 export const MyOrdersPage = () => { const [orders, setOrders] = useState([]); useEffect(() => { storeService.myOrders().then(setOrders).catch(() => setOrders([])); }, []); return <div className="py-8"><h1 className="section-title mb-4">My Orders</h1>{orders.map((o) => <div key={o._id} className="premium-card p-3 mb-2">{o._id} • {o.status} • ₹{o.total} {o.dispatch?.trackingId ? `• ${o.dispatch.trackingId}` : ''}</div>)}{!orders.length && <div className="premium-card p-4">No orders yet.</div>}</div>; };
-export const OrderSuccessPage = () => {
-  const location = useLocation();
-  const orderId = location.state?.orderId;
-
-  return (
-    <div className="py-10 max-w-2xl mx-auto">
-      <div className="premium-card p-8 text-center space-y-3">
-        <h1 className="section-title">Order placed successfully</h1>
-        <p>Thank you for your purchase. Your order is now saved in your account history.</p>
-        {orderId && <p className="text-sm text-slate-600">Order ID: {orderId}</p>}
-        <div className="flex justify-center gap-3 pt-2">
-          <Link to="/orders" className="bg-charcoal text-white px-5 py-2 rounded">View Orders</Link>
-          <Link to="/shop" className="border px-5 py-2 rounded">Continue Shopping</Link>
-        </div>
-      </div>
-    </div>
-  );
-};
 export const TrackingPage = () => <div className="py-8 premium-card p-4"><h1 className="section-title">Order Tracking</h1><div className="mt-3 text-sm">Stages: Pending → Confirmed → Packed → Dispatched → Delivered</div></div>;
 export const LoginPage = () => { const nav = useNavigate(); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [forgot, setForgot] = useState(false); return <div className="py-8 max-w-md mx-auto premium-card p-4"><h1 className="section-title">Login</h1><input value={email} onChange={(e) => setEmail(e.target.value)} className="border p-2 rounded w-full my-2" placeholder="Email"/><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="border p-2 rounded w-full mb-2" placeholder="Password"/>{forgot && <button onClick={async () => { const data = await authService.forgotPassword(email); window.alert(data.resetToken ? `Reset token: ${data.resetToken}` : 'Reset flow started'); }} className="border py-2 rounded w-full mb-2">Send reset link</button>}<button onClick={async () => { await authService.signIn({ email, password }); nav('/profile'); window.location.reload(); }} className="bg-charcoal text-white py-2 rounded w-full">Login</button><button onClick={() => setForgot(!forgot)} className="text-xs mt-2">Forgot password?</button></div>; };
 export const SignupPage = () => { const nav = useNavigate(); const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); return <div className="py-8 max-w-md mx-auto premium-card p-4"><h1 className="section-title">Signup</h1><input value={name} onChange={(e) => setName(e.target.value)} className="border p-2 rounded w-full my-2" placeholder="Name"/><input value={email} onChange={(e) => setEmail(e.target.value)} className="border p-2 rounded w-full my-2" placeholder="Email"/><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="border p-2 rounded w-full mb-2" placeholder="Password"/><button onClick={async () => { await authService.signUp({ name, email, password }); window.alert('Signup successful.'); nav('/profile'); window.location.reload(); }} className="bg-charcoal text-white py-2 rounded w-full">Create account</button></div>; };
