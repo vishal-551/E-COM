@@ -1,8 +1,6 @@
-import dotenv from 'dotenv';
+import '../config/env.js';
 import connectDB from '../config/db.js';
 import User from '../models/User.js';
-
-dotenv.config();
 
 const splitName = (name = 'Admin User') => {
   const [firstName, ...rest] = name.split(' ').filter(Boolean);
