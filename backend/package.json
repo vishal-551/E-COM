@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "seed:admin": "node scripts/seedAdmin.js"
+    "seed:admin": "node scripts/seedAdmin.js",
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

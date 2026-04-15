@@ -1,74 +1,74 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
+import HomePage from './pages/HomePage';
+import ShopPage from './pages/ShopPage';
+import ProductPage from './pages/ProductPage';
 import {
   AboutPage,
-  BlogDetailsPage,
-  BlogPage,
+  AccountPage,
+  CartPage,
+  CheckoutPage,
   ContactPage,
   FAQPage,
-  HomePage,
+  LoginPage,
+  MyOrdersPage,
   NotFoundPage,
-  ProjectDetailsPage,
-  ProjectsPage,
-  QuotePage,
-  ServicesPage,
-} from './pages/PublicPages';
-import { AdminDashboard, AdminLoginPage } from './pages/admin/AdminPanel';
-import { useAuth } from './context/AuthContext';
+  PolicyPage,
+  SignupPage,
+  TrackingPage,
+  WishlistPage,
+} from './pages/UtilityPages';
+import {
+  AdminBanners,
+  AdminCategories,
+  AdminCoupons,
+  AdminDashboard,
+  AdminEnquiries,
+  AdminLoginPage,
+  AdminLogoutButton,
+  AdminOrders,
+  AdminProducts,
+  AdminSettings,
+  AdminUsers,
+} from './pages/admin/AdminPages';
+import { useStore } from './context/StoreContext';
 
 function ProtectedAdmin({ children }) {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/admin/login" replace />;
+  const { user } = useStore();
+  return user?.role === 'admin' || user?.role === 'editor' ? children : <Navigate to="/admin/login" replace />;
 }
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout><HomePage /></Layout>} />
+      <Route path="/shop" element={<Layout><ShopPage /></Layout>} />
+      <Route path="/product/:slug" element={<Layout><ProductPage /></Layout>} />
+      <Route path="/wishlist" element={<Layout><WishlistPage /></Layout>} />
+      <Route path="/cart" element={<Layout><CartPage /></Layout>} />
+      <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
+      <Route path="/orders" element={<Layout><MyOrdersPage /></Layout>} />
+      <Route path="/tracking" element={<Layout><TrackingPage /></Layout>} />
+      <Route path="/profile" element={<Layout><AccountPage /></Layout>} />
+      <Route path="/login" element={<Layout><LoginPage /></Layout>} />
+      <Route path="/signup" element={<Layout><SignupPage /></Layout>} />
       <Route path="/about" element={<Layout><AboutPage /></Layout>} />
-      <Route path="/services" element={<Layout><ServicesPage /></Layout>} />
-      <Route path="/projects" element={<Layout><ProjectsPage /></Layout>} />
-      <Route path="/projects/:slug" element={<Layout><ProjectDetailsPage /></Layout>} />
-      <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
-      <Route path="/blog/:slug" element={<Layout><BlogDetailsPage /></Layout>} />
       <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
-      <Route path="/request-quote" element={<Layout><QuotePage /></Layout>} />
       <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
+      <Route path="/policy/:slug" element={<Layout><PolicyPage title="Policy" /></Layout>} />
+
       <Route path="/admin/login" element={<Layout><AdminLoginPage /></Layout>} />
-      <Route path="/admin" element={<ProtectedAdmin><Layout><AdminDashboard /></Layout></ProtectedAdmin>} />
+      <Route path="/admin" element={<ProtectedAdmin><Layout><div className="flex justify-between items-center"><AdminDashboard /><AdminLogoutButton /></div></Layout></ProtectedAdmin>} />
+      <Route path="/admin/products" element={<ProtectedAdmin><Layout><AdminProducts /></Layout></ProtectedAdmin>} />
+      <Route path="/admin/orders" element={<ProtectedAdmin><Layout><AdminOrders /></Layout></ProtectedAdmin>} />
+      <Route path="/admin/users" element={<ProtectedAdmin><Layout><AdminUsers /></Layout></ProtectedAdmin>} />
+      <Route path="/admin/banners" element={<ProtectedAdmin><Layout><AdminBanners /></Layout></ProtectedAdmin>} />
+      <Route path="/admin/categories" element={<ProtectedAdmin><Layout><AdminCategories /></Layout></ProtectedAdmin>} />
+      <Route path="/admin/coupons" element={<ProtectedAdmin><Layout><AdminCoupons /></Layout></ProtectedAdmin>} />
+      <Route path="/admin/enquiries" element={<ProtectedAdmin><Layout><AdminEnquiries /></Layout></ProtectedAdmin>} />
+      <Route path="/admin/settings" element={<ProtectedAdmin><Layout><AdminSettings /></Layout></ProtectedAdmin>} />
+
       <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
-import { AnalyticsPage, DashboardPage } from './pages/DashboardPage';
-import { ForgotPasswordPage, LoginPage, SignupPage } from './pages/AuthPages';
-import { LandingPage, PricingPage } from './pages/PublicPages';
-import { ActivityLogsPage, NotificationsPage, ProfilePage, SupportPage } from './pages/OperationsPages';
-import { SettingsPage, TeamPage, UsersPage } from './pages/ManagementPages';
-import AppShell from './components/layout/AppShell';
-import ProtectedRoute from './components/common/ProtectedRoute';
-
-function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/pricing" element={<PricingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-
-      <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="analytics" element={<ProtectedRoute permission="view_analytics"><AnalyticsPage /></ProtectedRoute>} />
-        <Route path="users" element={<ProtectedRoute permission="manage_users"><UsersPage /></ProtectedRoute>} />
-        <Route path="team" element={<ProtectedRoute permission="manage_team"><TeamPage /></ProtectedRoute>} />
-        <Route path="settings" element={<ProtectedRoute permission="manage_settings"><SettingsPage /></ProtectedRoute>} />
-        <Route path="notifications" element={<NotificationsPage />} />
-        <Route path="activity-logs" element={<ProtectedRoute permission="view_activity_logs"><ActivityLogsPage /></ProtectedRoute>} />
-        <Route path="profile" element={<ProfilePage />} />
-        <Route path="support" element={<SupportPage />} />
-      </Route>
-
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
-
-export default App;
