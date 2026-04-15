@@ -29,9 +29,11 @@ Copy from template:
 cp .env.example .env
 ```
 
-Required:
+Usage:
 
-- `VITE_API_BASE_URL` (must include `/api`)
+- `VITE_API_BASE_URL` should include `/api` when set.
+- In local development, if it is omitted, frontend code falls back to `http://localhost:5000/api`.
+- In production, set it explicitly.
 
 Examples:
 
@@ -83,12 +85,9 @@ Optional:
    cp backend/.env.example backend/.env
    ```
 
-4. Start MongoDB locally (or use Atlas):
+4. Ensure MongoDB is running (local service or Atlas URI in `MONGO_URI`).
 
-   ```bash
-   # Example for local MongoDB service names (use the one your OS provides)
-   sudo systemctl start mongod || sudo systemctl start mongodb
-   ```
+   Local Mongo example URI: `mongodb://127.0.0.1:27017/ecom`
 
 5. Run frontend + backend together:
 
@@ -120,7 +119,7 @@ Option A: auto-seed on backend startup
 - Set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `backend/.env`.
 - Optionally set `SEED_ADMIN_NAME`.
 
-Option B: run seed command manually
+Option B: run seed command manually (requires MongoDB connectivity):
 
 ```bash
 npm run seed:admin
