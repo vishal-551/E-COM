@@ -17,7 +17,7 @@ export const AdminLoginPage = () => {
       setLoading(true);
       setError('');
       const data = await authService.signIn({ email, password });
-      if (data.user?.role !== 'admin') throw new Error('Admin access required');
+      if (!['admin', 'editor'].includes(data.user?.role)) throw new Error('Admin access required');
       navigate('/admin', { replace: true });
       window.location.reload();
     } catch (e) {
