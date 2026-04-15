@@ -31,6 +31,10 @@ npm run dev:all
 - Backend: `http://localhost:5000`
 - Health: `http://localhost:5000/api/health`
 
+## Core flows covered
+- Customer: product list/details, signup/login, cart CRUD, wishlist, coupon apply, checkout, order-success, order history.
+- Admin: login, protected admin routes, analytics, product/category/banner CRUD, enquiry management, coupon CRUD, order status updates, user list/block, settings content, media upload library.
+
 ## Seed Admin
 Set in `backend/.env`:
 - `SEED_ADMIN_EMAIL`

@@ -35,9 +35,15 @@ router.get('/', protect, adminOnly, asyncHandler(async (req, res) => {
   if (q) filter._id = { $regex: q, $options: 'i' };
 
   const orders = await Order.find(filter)
-    .populate('user', 'name email phone createdAt')
+    .populate('user', 'firstName lastName email phone createdAt')
     .sort({ createdAt: -1 });
-  res.json(orders);
+  res.json(orders.map((order) => {
+    const data = order.toObject();
+    if (data.user) {
+      data.user.name = `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim();
+    }
+    return data;
+  }));
 }));
 
 router.patch('/:id/status', protect, adminOnly, asyncHandler(async (req, res) => {
