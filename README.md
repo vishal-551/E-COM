@@ -125,7 +125,18 @@ Option B: run seed command manually (requires MongoDB connectivity):
 npm run seed:admin
 ```
 
-## 5) Frontend Deployment (Vercel)
+## 5) Local Production Preview (Frontend)
+
+Build and preview the frontend exactly as production static assets:
+
+```bash
+npm run build
+npm run preview
+```
+
+Preview URL (default): `http://localhost:4173`
+
+## 6) Frontend Deployment (Vercel)
 
 1. Push repo to GitHub.
 2. In Vercel, import the repo.
@@ -138,7 +149,7 @@ npm run seed:admin
 5. Deploy.
 6. Confirm frontend can call backend health via browser/API client.
 
-## 6) Backend Deployment (Render / Railway / VPS)
+## 7) Backend Deployment (Render / Railway / VPS)
 
 ### Render
 
@@ -169,7 +180,7 @@ From `backend/`:
 
 Ensure the same environment variables are configured.
 
-## 7) MongoDB Atlas Setup
+## 8) MongoDB Atlas Setup
 
 1. Create Atlas cluster.
 2. Create database user (read/write on app DB).
@@ -178,7 +189,7 @@ Ensure the same environment variables are configured.
    - `MONGO_URI=mongodb+srv://<user>:<password>@<cluster>/<db>?retryWrites=true&w=majority`
 5. Restart backend and verify `/api/health` returns `ok: true`.
 
-## 8) Cloudinary Setup
+## 9) Cloudinary Setup
 
 1. Create Cloudinary account.
 2. Copy credentials from dashboard:
@@ -196,7 +207,7 @@ Notes:
 - Uploads use Multer memory storage + direct Cloudinary upload stream.
 - No local disk dependency for production media.
 
-## 9) CORS + Custom Domain Flow
+## 10) CORS + Custom Domain Flow
 
 Supported deployment patterns:
 
@@ -215,14 +226,14 @@ Supported deployment patterns:
 
 If you run staging + production in parallel, use `CLIENT_URLS` as comma-separated allowlist.
 
-## 10) Health + Monitoring Basics
+## 11) Health + Monitoring Basics
 
 - Health endpoint: `GET /api/health`
 - Returns service uptime, environment, DB state, and status.
 - Returns `503` if database is not ready.
 - Startup validates required env variables and exits with clear errors if invalid.
 
-## 11) Security Notes
+## 12) Security Notes
 
 - Passwords are hashed with bcrypt before saving.
 - JWT-based route protection enforced via middleware.
@@ -231,7 +242,7 @@ If you run staging + production in parallel, use `CLIENT_URLS` as comma-separate
 - Forgot-password endpoint does not expose raw reset tokens in production.
 - Frontend only consumes `VITE_*` public variables; backend secrets are server-side only.
 
-## 12) Build / Run Commands
+## 13) Build / Run Commands
 
 Root scripts:
 
@@ -252,7 +263,7 @@ Backend scripts:
 - `npm run start`
 - `npm run seed:admin`
 
-## 13) Preview / Test URLs After Deploy
+## 14) Preview / Test URLs After Deploy
 
 - Frontend: `https://<frontend-domain>`
 - Backend health: `https://<api-domain>/api/health`
