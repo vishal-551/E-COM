@@ -18,6 +18,16 @@ services:
         sync: false
       - key: CLIENT_URL
         sync: false
+      - key: CLIENT_URLS
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: SEED_ADMIN_NAME
+        sync: false
       - key: SEED_ADMIN_EMAIL
         sync: false
       - key: SEED_ADMIN_PASSWORD
