@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { useStore } from '../context/StoreContext';
 import { authService, storeService } from '../lib/services';
@@ -52,8 +53,26 @@ export function CheckoutPage() {
     });
     await loadPrivateData();
     nav('/order-success', { state: { orderId: order._id } });
+    nav(`/order-success/${order._id}`);
   };
   return <div className="py-8 grid lg:grid-cols-3 gap-4"><form onSubmit={onSubmit} className="lg:col-span-2 premium-card p-4 grid md:grid-cols-2 gap-3">{Object.entries(form).map(([k, v]) => k !== 'payment' && <input key={k} required value={v} onChange={(e) => setForm({ ...form, [k]: e.target.value })} placeholder={k} className="border rounded p-2"/>)}<select value={form.payment} onChange={(e) => setForm({ ...form, payment: e.target.value })} className="border rounded p-2 md:col-span-2"><option>COD</option><option>UPI</option><option>Card</option></select><button className="bg-charcoal text-white py-2 rounded md:col-span-2">Place Order</button></form><aside className="premium-card p-4"><h3 className="font-semibold">Order Summary</h3><p className="text-sm">Items: {cart.length}</p><p>Subtotal: ₹{subtotal}</p><div className="mt-2 flex gap-2"><input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="Coupon" className="border rounded p-2 flex-1"/><button type="button" onClick={onApplyCoupon} className="px-3 rounded bg-charcoal text-white">Apply</button></div><p>Discount: ₹{couponDiscount}</p><p className="font-semibold mt-2">Total ₹{total}</p></aside></div>;
+}
+
+export function OrderSuccessPage() {
+  const { orderId } = useParams();
+  return (
+    <div className="py-10 max-w-2xl mx-auto">
+      <div className="premium-card p-8 text-center space-y-3">
+        <h1 className="section-title">Order placed successfully 🎉</h1>
+        <p>Your order id is <span className="font-semibold">{orderId}</span>.</p>
+        <p className="text-sm text-gray-600">You can track status and history from your orders page.</p>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <Link to="/orders" className="bg-charcoal text-white px-4 py-2 rounded">View My Orders</Link>
+          <Link to="/shop" className="border border-charcoal px-4 py-2 rounded">Continue Shopping</Link>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ContactPage() { const [data, setData] = useState({ name: '', phone: '', email: '', subject: '', message: '' }); return <div className="py-8"><h1 className="section-title mb-4">Contact Us</h1><form onSubmit={async (e) => { e.preventDefault(); await storeService.submitEnquiry(data); setData({ name: '', phone: '', email: '', subject: '', message: '' }); window.alert('Message sent'); }} className="premium-card p-4 grid md:grid-cols-2 gap-3">{Object.entries(data).map(([k, v]) => <input key={k} required value={v} onChange={(e) => setData({ ...data, [k]: e.target.value })} placeholder={k} className="border rounded p-2"/>)}<button className="bg-charcoal text-white py-2 rounded md:col-span-2">Send Message</button></form></div>; }

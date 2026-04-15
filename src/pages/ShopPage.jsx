@@ -18,6 +18,11 @@ export default function ShopPage({ preset }) {
         || categoryName === category
         || (selectedCategoryName && categoryName === selectedCategoryName);
       return categoryMatched && (!preset || preset(p))
+      const normalizedCategory = category.toLowerCase();
+      const categoryMatches = category === 'All'
+        || categoryName.toLowerCase() === normalizedCategory
+        || categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-') === normalizedCategory;
+      return categoryMatches && (!preset || preset(p))
       && `${p.name} ${categoryName} ${p.brand || ''}`.toLowerCase().includes(q.toLowerCase());
     });
     if (sort === 'low') out = [...out].sort((a, b) => Number(a.salePrice || a.price) - Number(b.salePrice || b.price));
