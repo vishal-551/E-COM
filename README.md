@@ -10,6 +10,12 @@ Production-minded full-stack e-commerce monorepo with a clean, single architectu
 
 > This repository intentionally does **not** use Supabase.
 
+
+## Architecture Consistency
+
+- Active stack is **React + Vite**, **Node.js + Express**, **MongoDB + Mongoose**, **JWT**, and **Multer + Cloudinary**.
+- No Supabase runtime or migration layer is used in this repository.
+
 ## Project Structure
 
 - `src/` — React storefront + admin frontend
@@ -78,6 +84,12 @@ Optional:
 
    ```bash
    npm run dev:all
+   ```
+
+5. Verify backend health:
+
+   ```bash
+   curl http://localhost:5000/api/health
    ```
 
 ## Local Preview URLs

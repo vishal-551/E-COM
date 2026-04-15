@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import './config/env.js';
 import express from 'express';
 import cors from 'cors';
 import connectDB from './config/db.js';
@@ -19,11 +19,10 @@ import User from './models/User.js';
 import Order from './models/Order.js';
 import Product from './models/Product.js';
 import cloudinary from './config/cloudinary.js';
+import { requireEnv, requireOneOfEnv } from './config/env.js';
 import { upload } from './middleware/upload.js';
 import UploadAsset from './models/UploadAsset.js';
 import { uploadBufferToCloudinary } from './utils/media.js';
-
-dotenv.config();
 
 const app = express();
 
@@ -138,6 +137,13 @@ app.delete('/api/upload/:publicId', protect, adminOnly, async (req, res, next) =
 
 app.use(notFound);
 app.use(errorHandler);
+
+requireEnv('MONGO_URI');
+requireEnv('JWT_SECRET');
+requireOneOfEnv(['CLIENT_URL', 'CLIENT_URLS']);
+requireEnv('CLOUDINARY_CLOUD_NAME');
+requireEnv('CLOUDINARY_API_KEY');
+requireEnv('CLOUDINARY_API_SECRET');
 
 const PORT = process.env.PORT || 5000;
 
