@@ -1,67 +1,70 @@
 # E-COM
 
-Production-minded full-stack e-commerce monorepo with a clean, single architecture:
+Production-ready MERN e-commerce monorepo with a single architecture:
 
-- **Frontend:** React + Vite + TailwindCSS
+- **Frontend:** React + Vite
 - **Backend:** Node.js + Express
 - **Database:** MongoDB + Mongoose
 - **Auth:** JWT
-- **Uploads:** Multer (memory storage) + Cloudinary
+- **Uploads:** Multer (memory) + Cloudinary
 
-> This repository intentionally does **not** use Supabase.
+> This repo intentionally does **not** use Supabase.
 
+## 1) Repository Structure
 
-## Architecture Consistency
-
-- Active stack is **React + Vite**, **Node.js + Express**, **MongoDB + Mongoose**, **JWT**, and **Multer + Cloudinary**.
-- No Supabase runtime or migration layer is used in this repository.
-
-## Project Structure
-
-- `src/` — React storefront + admin frontend
-- `backend/` — Express API, models, routes, middleware, seed script
+- `src/` — React frontend (store + admin UI)
+- `backend/` — Express API, auth, models, upload pipeline
 - `.env.example` — frontend env template
 - `backend/.env.example` — backend env template
-- `vercel.json` — frontend deployment routing
-- `render.yaml` — backend deployment blueprint for Render
+- `vercel.json` — SPA routing for Vercel deployment
+- `render.yaml` — Render blueprint for backend deployment
 
-## Environment Files
+## 2) Environment Variables
 
-Create env files from templates:
+### Frontend (`.env`)
+
+Copy from template:
 
 ```bash
 cp .env.example .env
+```
+
+Required:
+
+- `VITE_API_BASE_URL` (must include `/api`)
+
+Examples:
+
+- Local: `VITE_API_BASE_URL=http://localhost:5000/api`
+- Production: `VITE_API_BASE_URL=https://api.yourdomain.com/api`
+
+### Backend (`backend/.env`)
+
+Copy from template:
+
+```bash
 cp backend/.env.example backend/.env
 ```
 
-### Frontend `.env`
-
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-```
-
-### Backend `backend/.env`
-
-Required in all environments:
+Required:
 
 - `MONGO_URI`
 - `JWT_SECRET`
-- one of `CLIENT_URL` or `CLIENT_URLS`
+- One of `CLIENT_URL` or `CLIENT_URLS`
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 
 Optional:
 
-- `CLIENT_URLS` (comma-separated allowlist for multiple origins)
 - `JWT_EXPIRES_IN` (default `7d`)
 - `SEED_ADMIN_NAME`
 - `SEED_ADMIN_EMAIL`
 - `SEED_ADMIN_PASSWORD`
 
-## Local Setup (Run-Readiness Flow)
+## 3) Local Development Setup
 
-1. Install root dependencies:
+1. Install frontend dependencies:
 
    ```bash
    npm install
@@ -73,14 +76,14 @@ Optional:
    npm run backend:install
    ```
 
-3. Copy env templates and fill values:
+3. Create env files and fill values:
 
    ```bash
    cp .env.example .env
    cp backend/.env.example backend/.env
    ```
 
-4. Start frontend + backend together:
+4. Run frontend + backend together:
 
    ```bash
    npm run dev:all
@@ -92,94 +95,152 @@ Optional:
    curl http://localhost:5000/api/health
    ```
 
-## Local Preview URLs
+Local URLs:
 
 - Frontend: `http://localhost:5173`
-- Backend API root: `http://localhost:5000`
-- Backend health route: `http://localhost:5000/api/health`
+- Backend: `http://localhost:5000`
+- Health: `http://localhost:5000/api/health`
 
-## Local Production Preview (Frontend)
+## 4) Seed Admin Setup
 
-After backend is running and frontend env is configured:
+Option A: auto-seed on backend startup
 
-```bash
-npm run build
-npm run preview
-```
+- Set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in `backend/.env`.
+- Optionally set `SEED_ADMIN_NAME`.
 
-Then open the preview URL printed by Vite (default: `http://localhost:4173`).
-
-## NPM Scripts
-
-### Root scripts
-
-- `npm run dev` — start Vite dev server
-- `npm run build` — build frontend
-- `npm run preview` — preview built frontend
-- `npm run backend:install` — install backend dependencies
-- `npm run backend:dev` — run backend in watch mode
-- `npm run backend:start` — run backend in standard mode
-- `npm run backend:seed:admin` — seed admin from backend env values
-- `npm run seed:admin` — alias for backend seed command
-- `npm run dev:all` — run frontend + backend concurrently
-- `npm run install:all` — install root + backend dependencies
-
-### Backend scripts (`backend/package.json`)
-
-- `npm run dev`
-- `npm run start`
-- `npm run seed:admin`
-
-## Admin Seed Behavior
-
-- The backend can auto-seed an admin user at startup when both `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are provided.
-- You can also seed manually with:
+Option B: run seed command manually
 
 ```bash
 npm run seed:admin
 ```
 
-## API Summary
+## 5) Frontend Deployment (Vercel)
 
-- `GET /api/health` — health check
-- `POST /api/auth/*` — auth endpoints
-- `GET /api/products` — products
-- `GET /api/categories` — categories
-- `GET /api/banners` — banners
-- `POST /api/contact` — contact form
-- `GET /api/cart` — cart
-- `GET /api/wishlist` — wishlist
-- `POST /api/coupons/apply` — coupon validation
-- `POST /api/orders` — order placement
-- `GET /api/users` — admin user management
-- `GET /api/settings` — site settings
-- `POST /api/upload/single` — admin image upload to Cloudinary
-- `GET /api/admin/analytics` — admin dashboard
+1. Push repo to GitHub.
+2. In Vercel, import the repo.
+3. Configure project:
+   - Framework preset: **Vite**
+   - Build command: `npm run build`
+   - Output directory: `dist`
+4. Add environment variable:
+   - `VITE_API_BASE_URL=https://<your-api-domain>/api`
+5. Deploy.
+6. Confirm frontend can call backend health via browser/API client.
 
-## Deployment Summary
+## 6) Backend Deployment (Render / Railway / VPS)
 
-### Frontend (Vercel)
+### Render
 
-- Framework preset: **Vite**
-- Build command: `npm run build`
-- Output directory: `dist`
-- Env var:
-  - `VITE_API_BASE_URL=https://<your-backend-domain>/api`
+- This repo includes `render.yaml` configured for:
+  - `rootDir: backend`
+  - `buildCommand: npm install`
+  - `startCommand: npm run start`
+  - health check: `/api/health`
 
-### Backend (Render / Railway / VPS)
+Set backend env vars in Render dashboard:
 
-- Service root: `backend`
-- Build command: `npm install`
-- Start command: `npm run start`
-- Health check path: `/api/health`
-- Set backend env vars from `backend/.env.example`
+- `NODE_ENV=production`
+- `PORT=5000` (or platform default)
+- `MONGO_URI`
+- `JWT_SECRET`
+- `CLIENT_URL` and/or `CLIENT_URLS`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- Optional seed vars (`SEED_ADMIN_*`)
 
-### Custom Domain
+### Railway / VPS
 
-- Point frontend domain/subdomain to Vercel project
-- Point API domain/subdomain to backend host (Render/Railway/VPS)
-- Update CORS in backend env:
-  - `CLIENT_URL=https://<your-frontend-domain>`
-  - optionally `CLIENT_URLS` for multiple domains
-- Update frontend env:
-  - `VITE_API_BASE_URL=https://<your-api-domain>/api`
+From `backend/`:
+
+- Install: `npm install`
+- Start: `npm run start`
+
+Ensure the same environment variables are configured.
+
+## 7) MongoDB Atlas Setup
+
+1. Create Atlas cluster.
+2. Create database user (read/write on app DB).
+3. In **Network Access**, allow backend host IP(s) (or `0.0.0.0/0` temporarily during setup).
+4. Get connection string and set:
+   - `MONGO_URI=mongodb+srv://<user>:<password>@<cluster>/<db>?retryWrites=true&w=majority`
+5. Restart backend and verify `/api/health` returns `ok: true`.
+
+## 8) Cloudinary Setup
+
+1. Create Cloudinary account.
+2. Copy credentials from dashboard:
+   - cloud name
+   - API key
+   - API secret
+3. Set backend env:
+   - `CLOUDINARY_CLOUD_NAME`
+   - `CLOUDINARY_API_KEY`
+   - `CLOUDINARY_API_SECRET`
+4. Test admin upload from UI (`/api/upload/single`).
+
+Notes:
+
+- Uploads use Multer memory storage + direct Cloudinary upload stream.
+- No local disk dependency for production media.
+
+## 9) CORS + Custom Domain Flow
+
+Supported deployment patterns:
+
+1. **Local FE + Local BE**
+   - `CLIENT_URL=http://localhost:5173`
+   - `VITE_API_BASE_URL=http://localhost:5000/api`
+
+2. **Vercel FE + Hosted BE**
+   - `CLIENT_URL=https://<your-vercel-domain>`
+   - `VITE_API_BASE_URL=https://<backend-domain>/api`
+
+3. **Custom FE domain + API subdomain**
+   - `CLIENT_URL=https://www.yourdomain.com`
+   - or `CLIENT_URLS=https://www.yourdomain.com,https://yourdomain.com`
+   - `VITE_API_BASE_URL=https://api.yourdomain.com/api`
+
+If you run staging + production in parallel, use `CLIENT_URLS` as comma-separated allowlist.
+
+## 10) Health + Monitoring Basics
+
+- Health endpoint: `GET /api/health`
+- Returns service uptime, environment, DB state, and status.
+- Returns `503` if database is not ready.
+- Startup validates required env variables and exits with clear errors if invalid.
+
+## 11) Security Notes
+
+- Passwords are hashed with bcrypt before saving.
+- JWT-based route protection enforced via middleware.
+- Admin routes require `admin` or `editor` role.
+- Production error responses avoid leaking internal stack traces.
+- Forgot-password endpoint does not expose raw reset tokens in production.
+- Frontend only consumes `VITE_*` public variables; backend secrets are server-side only.
+
+## 12) Build / Run Commands
+
+Root scripts:
+
+- `npm run dev` — frontend dev
+- `npm run build` — frontend build
+- `npm run preview` — frontend preview
+- `npm run dev:all` — frontend + backend dev
+- `npm run backend:install`
+- `npm run backend:dev`
+- `npm run backend:start`
+- `npm run seed:admin`
+
+Backend scripts:
+
+- `npm run dev`
+- `npm run start`
+- `npm run seed:admin`
+
+## 13) Preview / Test URLs After Deploy
+
+- Frontend: `https://<frontend-domain>`
+- Backend health: `https://<api-domain>/api/health`
+- API base used by frontend: `https://<api-domain>/api`

@@ -8,8 +8,13 @@ export const errorHandler = (err, req, res, next) => {
     console.error(err);
   }
 
+  const isOperational = statusCode < 500;
+  const message = isOperational || process.env.NODE_ENV === 'development'
+    ? (err.message || 'Internal server error.')
+    : 'Internal server error.';
+
   res.status(statusCode).json({
-    message: err.message || 'Internal server error.',
-    ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {})
+    message,
+    ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {}),
   });
 };

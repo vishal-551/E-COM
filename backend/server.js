@@ -19,30 +19,49 @@ import User from './models/User.js';
 import Order from './models/Order.js';
 import Product from './models/Product.js';
 import cloudinary from './config/cloudinary.js';
-import { requireEnv, requireOneOfEnv } from './config/env.js';
+import mongoose from 'mongoose';
+import { getAllowedOrigins, validateRuntimeEnv } from './config/env.js';
 import { upload } from './middleware/upload.js';
 import UploadAsset from './models/UploadAsset.js';
 import { uploadBufferToCloudinary } from './utils/media.js';
 
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const { errors: envValidationErrors, allowedOrigins } = validateRuntimeEnv();
+if (envValidationErrors.length) {
+  console.error('❌ Invalid environment configuration:');
+  envValidationErrors.forEach((item) => console.error(` - ${item}`));
+  process.exit(1);
+}
+
+const redactMongoUri = (uri) => uri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
+
+const healthPayload = () => ({
+  ok: mongoose.connection.readyState === 1,
+  service: 'e-com-api',
+  env: process.env.NODE_ENV || 'development',
+  uptimeSeconds: Math.round(process.uptime()),
+  dbState: mongoose.connection.readyState,
+  timestamp: new Date().toISOString(),
+});
 
 app.use(cors({
   origin(origin, callback) {
     if (!origin) return callback(null, true);
-    if (!allowedOrigins.length || allowedOrigins.includes(origin)) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error(`CORS blocked for origin: ${origin}`));
   },
   credentials: true,
 }));
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
 
 app.get('/api/health', (_, res) => {
-  res.json({ ok: true, service: 'e-com-api', timestamp: new Date().toISOString() });
+  const payload = healthPayload();
+  if (!payload.ok) {
+    return res.status(503).json(payload);
+  }
+  return res.json(payload);
 });
 
 app.use('/api/auth', authRoutes);
@@ -138,14 +157,8 @@ app.delete('/api/upload/:publicId', protect, adminOnly, async (req, res, next) =
 app.use(notFound);
 app.use(errorHandler);
 
-requireEnv('MONGO_URI');
-requireEnv('JWT_SECRET');
-requireOneOfEnv(['CLIENT_URL', 'CLIENT_URLS']);
-requireEnv('CLOUDINARY_CLOUD_NAME');
-requireEnv('CLOUDINARY_API_KEY');
-requireEnv('CLOUDINARY_API_SECRET');
-
 const PORT = process.env.PORT || 5000;
+const mongoUri = process.env.MONGO_URI;
 
 connectDB()
   .then(async () => {
@@ -165,10 +178,15 @@ connectDB()
     }
 
     app.listen(PORT, () => {
-      console.log(`API listening on port ${PORT}`);
+      console.log(`✅ API listening on port ${PORT}`);
+      console.log(`🌐 Allowed CORS origins: ${allowedOrigins.join(', ')}`);
+      if (mongoUri) {
+        console.log(`🗄️ Mongo target: ${redactMongoUri(mongoUri)}`);
+      }
     });
   })
   .catch((error) => {
+    console.error('❌ Server startup failed.');
     console.error(error);
     process.exit(1);
   });
