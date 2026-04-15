@@ -35,7 +35,7 @@ router.get('/', protect, adminOnly, asyncHandler(async (req, res) => {
   if (q) filter._id = { $regex: q, $options: 'i' };
 
   const orders = await Order.find(filter)
-    .populate('user', 'name email phone createdAt')
+    .populate('user', 'firstName lastName email phone createdAt')
     .sort({ createdAt: -1 });
   res.json(orders);
 }));
