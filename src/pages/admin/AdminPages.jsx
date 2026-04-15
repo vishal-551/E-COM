@@ -53,41 +53,24 @@ export const AdminProducts = () => {
 export const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState('');
-  const [dispatchByOrder, setDispatchByOrder] = useState({});
 
-  const load = async () => {
-    let query = supabase.from('orders').select('*, profile:profiles(full_name,email), order_items(*)').order('created_at', { ascending: false });
-    if (filter) query = query.eq('status', filter);
-    const { data } = await query;
-    setOrders(data || []);
-  };
+  const load = async () => setOrders(await adminService.listOrders());
 
   useEffect(() => {
     load();
-  }, [filter]);
+  }, []);
 
-  const setDispatchField = (orderId, key, value) => {
-    setDispatchByOrder((prev) => ({
-      ...prev,
-      [orderId]: {
-        ...(prev[orderId] || {}),
-        [key]: value,
-      },
-    }));
-  };
+  const filteredOrders = useMemo(
+    () => (filter ? orders.filter((order) => order.status === filter) : orders),
+    [orders, filter],
+  );
 
-  const updateStatus = async (order, status) => {
-    const patch = dispatchByOrder[order.id] || {};
-    await supabase.from('orders').update({ status, ...patch }).eq('id', order.id);
+  const updateStatus = async (orderId, status) => {
+    await adminService.updateOrderStatus(orderId, { status });
     await load();
   };
 
-  return <div className="py-8 space-y-3"><h1 className="section-title">Orders</h1><div className={card}><div className="flex flex-wrap gap-2 items-center"><select value={filter} onChange={(e) => setFilter(e.target.value)} className="border p-2 rounded bg-black/20"><option value="">All statuses</option><option value="Pending">New orders</option>{statusList.map((s) => <option key={s}>{s}</option>)}</select><button onClick={() => setFilter('Pending')} className="px-3 py-2 rounded bg-charcoal text-white">View New</button></div></div>{orders.map((o) => { const dispatch = dispatchByOrder[o.id] || { courier_name: o.courier_name || '', tracking_id: o.tracking_id || '', dispatch_date: o.dispatch_date || '', estimated_delivery_date: o.estimated_delivery_date || '' }; return <div key={o.id} className={card}><div className="flex justify-between gap-2 flex-wrap"><div><p>#{o.id}</p><p className="text-xs">{o.profile?.full_name} • {o.payment_method} • ₹{o.total_amount}</p><p className="text-xs">Current status: {o.status}</p></div><div className="flex gap-2 flex-wrap"><button onClick={() => updateStatus(o, 'Confirmed')} className="text-xs px-2 py-1 rounded border">Confirm</button><button onClick={() => updateStatus(o, 'Packed')} className="text-xs px-2 py-1 rounded border">Mark Packed</button><button onClick={() => updateStatus(o, 'Dispatched')} className="text-xs px-2 py-1 rounded border">Mark Dispatched</button><button onClick={() => updateStatus(o, 'Delivered')} className="text-xs px-2 py-1 rounded border">Mark Delivered</button><button onClick={() => updateStatus(o, 'Cancelled')} className="text-xs px-2 py-1 rounded border border-rose-300 text-rose-200">Cancel</button><select value={o.status} onChange={(e) => updateStatus(o, e.target.value)} className="border p-2 rounded bg-black/20">{statusList.map((s) => <option key={s}>{s}</option>)}</select></div></div><div className="grid md:grid-cols-4 gap-2 mt-2">{['courier_name', 'tracking_id', 'dispatch_date', 'estimated_delivery_date'].map((k) => <input key={k} placeholder={k} value={dispatch[k]} onChange={(e) => setDispatchField(o.id, k, e.target.value)} className="border p-2 rounded bg-black/20" />)}</div><button onClick={() => updateStatus(o, o.status)} className="mt-2 text-xs px-3 py-1 rounded bg-charcoal text-white">Save dispatch details</button><div className="mt-2 space-y-1">{o.order_items?.map((item) => <p key={item.id} className="text-xs">{item.product_name} × {item.quantity} = ₹{Number(item.line_total)}</p>)}</div></div>; })}</div>;
-  useEffect(() => { adminService.listOrders().then(setOrders); }, []);
-
-  const reload = async () => setOrders(await adminService.listOrders());
-
-  return <div className="py-8 space-y-3"><h1 className="section-title">Orders</h1>{orders.map((o) => <div key={o._id} className={card}><div className="flex justify-between"><div><p>#{o._id}</p><p className="text-xs">{o.user?.name || `${o.user?.firstName || ''} ${o.user?.lastName || ''}`.trim()} • {o.paymentMethod} • ₹{o.total}</p></div><select value={o.status} onChange={async (e) => { await adminService.updateOrderStatus(o._id, { status: e.target.value }); await reload(); }} className="border p-2 rounded bg-black/20">{statusList.map((s) => <option key={s}>{s}</option>)}</select></div></div>)}</div>;
+  return <div className="py-8 space-y-3"><h1 className="section-title">Orders</h1><div className={card}><div className="flex flex-wrap gap-2 items-center"><select value={filter} onChange={(e) => setFilter(e.target.value)} className="border p-2 rounded bg-black/20"><option value="">All statuses</option><option value="Pending">New orders</option>{statusList.map((s) => <option key={s}>{s}</option>)}</select><button onClick={() => setFilter('Pending')} className="px-3 py-2 rounded bg-charcoal text-white">View New</button></div></div>{filteredOrders.map((o) => <div key={o._id} className={card}><div className="flex justify-between gap-2 flex-wrap"><div><p>#{o._id}</p><p className="text-xs">{o.user?.name || `${o.user?.firstName || ''} ${o.user?.lastName || ''}`.trim()} • {o.paymentMethod} • ₹{o.total}</p><p className="text-xs">Current status: {o.status}</p></div><div className="flex gap-2 flex-wrap"><button onClick={() => updateStatus(o._id, 'Confirmed')} className="text-xs px-2 py-1 rounded border">Confirm</button><button onClick={() => updateStatus(o._id, 'Packed')} className="text-xs px-2 py-1 rounded border">Mark Packed</button><button onClick={() => updateStatus(o._id, 'Dispatched')} className="text-xs px-2 py-1 rounded border">Mark Dispatched</button><button onClick={() => updateStatus(o._id, 'Delivered')} className="text-xs px-2 py-1 rounded border">Mark Delivered</button><button onClick={() => updateStatus(o._id, 'Cancelled')} className="text-xs px-2 py-1 rounded border border-rose-300 text-rose-200">Cancel</button><select value={o.status} onChange={(e) => updateStatus(o._id, e.target.value)} className="border p-2 rounded bg-black/20">{statusList.map((s) => <option key={s}>{s}</option>)}</select></div></div>{o.items?.length ? <div className="mt-2 space-y-1">{o.items.map((item) => <p key={item._id || item.product?._id || item.productName} className="text-xs">{item.productName} × {item.quantity} = ₹{Number(item.price) * Number(item.quantity)}</p>)}</div> : null}</div>)}</div>;
 };
 
 export const AdminUsers = () => {

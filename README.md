@@ -46,7 +46,7 @@ Required in all environments:
 
 - `MONGO_URI`
 - `JWT_SECRET`
-- `CLIENT_URL`
+- one of `CLIENT_URL` or `CLIENT_URLS`
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
@@ -97,6 +97,17 @@ Optional:
 - Frontend: `http://localhost:5173`
 - Backend API root: `http://localhost:5000`
 - Backend health route: `http://localhost:5000/api/health`
+
+## Local Production Preview (Frontend)
+
+After backend is running and frontend env is configured:
+
+```bash
+npm run build
+npm run preview
+```
+
+Then open the preview URL printed by Vite (default: `http://localhost:4173`).
 
 ## NPM Scripts
 
